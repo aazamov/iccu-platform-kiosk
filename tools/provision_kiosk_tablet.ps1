@@ -11,6 +11,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$ScriptVersion = "2026-07-03.2"
 $AppPackage = "uz.neovex.iccu.kiosk"
 $MainActivity = "uz.neovex.iccu.kiosk/.MainActivity"
 $AdminReceiver = "uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -635,6 +636,7 @@ function Verify-Kiosk {
 }
 
 $script:Serial = $Serial
+Write-Host "ICCU provisioning script version: $ScriptVersion" -ForegroundColor White
 Configure-Java
 Configure-AndroidSdk
 
