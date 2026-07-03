@@ -75,7 +75,7 @@ On a clean Windows computer, the PowerShell script can download portable Java 17
 tools\provision_kiosk_tablet.bat -PrepareTools
 ```
 
-For tablets without a Google account, put a compatible Android System WebView APK here before provisioning:
+For tablets without a Google account, the Windows script tries to download a compatible Android System WebView APK automatically when WebView is old. For stable operator setup, you can also put the APK here before provisioning:
 
 ```text
 tools\.downloads\android-system-webview.apk

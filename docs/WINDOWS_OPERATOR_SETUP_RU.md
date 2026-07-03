@@ -65,11 +65,13 @@ C:\Kiosk\iccu-forum-kiosk\tools\.portable
 
 Если на компьютере уже установлены Java 17 и ADB, скрипт использует их.
 
-Android System WebView APK нужно подготовить отдельно и положить сюда:
+Если на планшете старый WebView, скрипт попробует сам скачать Android System WebView APK в:
 
 ```text
 C:\Kiosk\iccu-forum-kiosk\tools\.downloads\android-system-webview.apk
 ```
+
+Для стабильной работы на трёх Windows-компьютерах лучше один раз скачать APK и заранее скопировать его в эту папку на каждый компьютер.
 
 Для HK17 Pro Max / Android 10 нужен WebView:
 
@@ -221,6 +223,12 @@ tools\provision_kiosk_tablet.bat -BuildOnly
 
 ```powershell
 tools\provision_kiosk_tablet.bat -WebViewApk C:\Kiosk\android-system-webview.apk
+```
+
+Если нужно указать свежую прямую ссылку для скачивания WebView APK:
+
+```powershell
+tools\provision_kiosk_tablet.bat -WebViewApkUrl https://example.com/android-system-webview.apk
 ```
 
 Если планшет уже обновлён и проверку WebView нужно пропустить:

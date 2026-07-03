@@ -8,13 +8,14 @@ param(
     [switch]$PrepareTools,
     [switch]$BuildOnly,
     [string]$WebViewApk = "",
+    [string]$WebViewApkUrl = "",
     [switch]$SkipWebViewUpdate,
     [int]$MinimumWebViewMajor = 100
 )
 
 $ErrorActionPreference = "Stop"
 
-$ScriptVersion = "2026-07-03.5"
+$ScriptVersion = "2026-07-03.6"
 $AppPackage = "uz.neovex.iccu.kiosk"
 $MainActivity = "uz.neovex.iccu.kiosk/.MainActivity"
 $AdminReceiver = "uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -28,6 +29,7 @@ $DownloadsRoot = Join-Path $ProjectRoot "tools\.downloads"
 $PlatformToolsUrl = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
 $CommandLineToolsUrl = "https://dl.google.com/android/repository/commandlinetools-win-13114758_latest.zip"
 $Jdk17Url = "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk"
+$DefaultWebViewApkUrl = "https://apks.39b7cb94d40914bac590886981b0ed6e.r2.cloudflarestorage.com/com.google.android.webview/150.0.7871.46/787104611.dda92dcf314fa7f9730b9a0d56d5890f51813998.apk?response-content-disposition=attachment%3B%20filename%3D%22Android%20System%20WebView_150.0.7871.46_apkcombo.com.apk%22&response-content-type=application%2Fvnd.android.package-archive&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20260703T114144Z&X-Amz-SignedHeaders=host&X-Amz-Expires=14400&X-Amz-Credential=3cb727b4cd4780c410b780ac7caa4da3%2F20260703%2Fauto%2Fs3%2Faws4_request&X-Amz-Signature=17e5020f92c62a672eafca3df177246520ca2c2f77d2737f9990e4538d4e1c2a"
 $AndroidSdkRoot = Join-Path $PortableRoot "android-sdk"
 $AndroidCompileSdk = "36"
 $AndroidBuildTools = "36.0.0"
@@ -577,6 +579,32 @@ function Resolve-WebViewApk {
     return ""
 }
 
+function Download-WebViewApk {
+    $url = $WebViewApkUrl
+    if ($url -eq "") {
+        $url = $DefaultWebViewApkUrl
+    }
+
+    if ($url -eq "") {
+        return ""
+    }
+
+    $outFile = Join-Path $DownloadsRoot "android-system-webview.apk"
+    Download-File -Url $url -OutFile $outFile
+
+    if (-not (Test-Path $outFile)) {
+        Fail "WebView APK download finished, but file was not found: $outFile"
+    }
+
+    $size = (Get-Item $outFile).Length
+    if ($size -lt 50000000) {
+        Remove-Item -Path $outFile -Force -ErrorAction SilentlyContinue
+        Fail "Downloaded WebView APK is too small. The download link may be expired; pass a fresh URL with -WebViewApkUrl or copy APK to tools\.downloads\android-system-webview.apk"
+    }
+
+    return (Resolve-Path $outFile).Path
+}
+
 function Get-CurrentWebViewVersion {
     $dump = Capture-AdbDevice -Arguments @("shell", "dumpsys", "webviewupdate")
     if ($dump.Text -match "Current WebView package \(name, version\): \($([regex]::Escape($WebViewPackage)),\s*([0-9][^)]+)\)") {
@@ -652,9 +680,17 @@ function Ensure-WebViewUpdated {
 
     $webViewApkPath = Resolve-WebViewApk
     if ($webViewApkPath -eq "") {
+        Write-Warn "WebView APK was not found locally. Downloading it into tools\.downloads."
+        $webViewApkPath = Download-WebViewApk
+    }
+
+    if ($webViewApkPath -eq "") {
         Write-Host ""
         Write-Host "Put Android System WebView APK here, then run again:"
         Write-Host "  tools\.downloads\android-system-webview.apk"
+        Write-Host ""
+        Write-Host "Or pass a fresh direct download URL:"
+        Write-Host "  tools\provision_kiosk_tablet.bat -WebViewApkUrl https://..."
         Write-Host ""
         Write-Host "For HK17 Android 10 tablets use:"
         Write-Host "  package: $WebViewPackage"
