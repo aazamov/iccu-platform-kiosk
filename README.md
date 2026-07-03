@@ -74,4 +74,14 @@ On a clean Windows computer, the PowerShell script can download portable Java 17
 ```bat
 tools\provision_kiosk_tablet.bat -PrepareTools
 ```
+
+## Windows Uninstall
+
+To remove the kiosk app from a connected tablet on Windows:
+
+```bat
+tools\uninstall_kiosk_tablet.bat
+```
+
+If the app is Device Owner, the script installs the debug APK with the built-in removal hook, clears Device Owner, uninstalls `uz.neovex.iccu.kiosk`, and verifies the package is gone.
 # iccu-platform-kiosk

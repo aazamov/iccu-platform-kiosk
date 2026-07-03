@@ -1,15 +1,16 @@
 -- Merging decision tree log ---
 manifest
 ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:2:1-60:12
-INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:2:1-60:12
-INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:2:1-60:12
-INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:2:1-60:12
+MERGED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:2:1-60:12
+INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml:2:1-12:12
+INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml:2:1-12:12
+INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml:2:1-12:12
 	package
-		INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml
+		INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml
 	android:versionName
-		INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml
+		INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml
 	android:versionCode
-		INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml
+		INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml
 	xmlns:android
 		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:2:11-69
 uses-permission#android.permission.INTERNET
@@ -30,22 +31,31 @@ ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/mai
 		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:7:22-78
 application
 ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:9:5-58:19
-INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:9:5-58:19
+MERGED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:9:5-58:19
+MERGED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:9:5-58:19
+INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml:4:5-11:19
 	android:extractNativeLibs
-		INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml
+		INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml
 	android:supportsRtl
+		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:15:9-35
 		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:15:9-35
 	android:label
 		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:13:9-35
+		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:13:9-35
 	android:fullBackupContent
+		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:11:9-42
 		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:11:9-42
 	android:resizeableActivity
 		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:14:9-43
+		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:14:9-43
 	android:icon
+		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:12:9-45
 		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:12:9-45
 	android:allowBackup
 		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:10:9-36
+		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:10:9-36
 	android:theme
+		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:16:9-40
 		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:16:9-40
 activity#uz.neovex.iccu.kiosk.MainActivity
 ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:18:9-31:20
@@ -127,11 +137,23 @@ action#android.intent.action.MY_PACKAGE_REPLACED
 ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:55:17-84
 	android:name
 		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:55:25-81
+activity#uz.neovex.iccu.kiosk.DebugRemoveOwnerActivity
+ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml:5:9-10:47
+	android:excludeFromRecents
+		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml:7:13-46
+	android:noHistory
+		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml:9:13-37
+	android:exported
+		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml:8:13-36
+	android:theme
+		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml:10:13-44
+	android:name
+		ADDED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml:6:13-53
 uses-sdk
-INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
-INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml
-INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml
+INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml
+INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml
 	android:targetSdkVersion
-		INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml
+		INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml
 	android:minSdkVersion
-		INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml
+		INJECTED from /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/AndroidManifest.xml

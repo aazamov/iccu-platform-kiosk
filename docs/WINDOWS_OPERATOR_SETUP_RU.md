@@ -105,6 +105,8 @@ settings.gradle.kts
 app\
 tools\provision_kiosk_tablet.ps1
 tools\provision_kiosk_tablet.bat
+tools\uninstall_kiosk_tablet.ps1
+tools\uninstall_kiosk_tablet.bat
 ```
 
 ## 4. Первый тест на Windows
@@ -193,7 +195,37 @@ tools\provision_kiosk_tablet.bat -PrepareTools
 tools\provision_kiosk_tablet.bat -BuildOnly
 ```
 
-## 7. Что делать на трёх компьютерах
+## 7. Удаление kiosk-приложения с планшета
+
+Если нужно убрать приложение с планшета, подключить планшет по USB и запустить:
+
+```powershell
+cd C:\Kiosk\iccu-forum-kiosk
+tools\uninstall_kiosk_tablet.bat
+```
+
+Скрипт автоматически:
+
+1. Находит подключённый планшет через ADB.
+2. Проверяет, установлен ли пакет `uz.neovex.iccu.kiosk`.
+3. Если приложение является Device Owner, собирает/устанавливает debug APK с remove hook.
+4. Снимает Device Owner внутри приложения.
+5. Удаляет пакет `uz.neovex.iccu.kiosk`.
+6. Проверяет, что пакет больше не установлен.
+
+Если APK уже собран и нужно быстрее:
+
+```powershell
+tools\uninstall_kiosk_tablet.bat -SkipBuild
+```
+
+Если подключено несколько планшетов:
+
+```powershell
+tools\uninstall_kiosk_tablet.bat -Serial KZ5CAEJ85LX5DSZFRYW
+```
+
+## 8. Что делать на трёх компьютерах
 
 На каждом Windows-компьютере один раз:
 
@@ -209,7 +241,14 @@ cd C:\Kiosk\iccu-forum-kiosk
 tools\provision_kiosk_tablet.bat
 ```
 
-## 8. Частые ошибки
+Для удаления приложения:
+
+```powershell
+cd C:\Kiosk\iccu-forum-kiosk
+tools\uninstall_kiosk_tablet.bat
+```
+
+## 9. Частые ошибки
 
 ### Нет Java, Android SDK или ADB
 

@@ -24,6 +24,12 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme" >
         <activity
+            android:name="uz.neovex.iccu.kiosk.DebugRemoveOwnerActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@style/AppTheme" />
+        <activity
             android:name="uz.neovex.iccu.kiosk.MainActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode"
             android:exported="true"
