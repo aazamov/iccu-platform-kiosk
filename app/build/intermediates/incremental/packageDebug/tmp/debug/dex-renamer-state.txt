@@ -1,4 +1,4 @@
-#Fri Jul 03 15:45:04 UZT 2026
+#Fri Jul 03 15:49:54 UZT 2026
 base.2=/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/build/intermediates/dex/debug/mergeProjectDexDebug/2/classes.dex
 path.2=2/classes.dex
 base.1=/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/build/intermediates/dex/debug/mergeProjectDexDebug/0/classes.dex

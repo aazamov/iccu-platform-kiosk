@@ -32,6 +32,8 @@ import android.view.WindowManager
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
+import android.webkit.ConsoleMessage
+import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -60,6 +62,7 @@ class MainActivity : Activity() {
     private var exitDialogPending = false
     private var reloadActionPending = false
     private var blankPageReloadCount = 0
+    private var lastConsoleMessage = ""
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             updateBattery(intent)
@@ -141,9 +144,14 @@ class MainActivity : Activity() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
+            databaseEnabled = true
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            loadsImagesAutomatically = true
+            javaScriptCanOpenWindowsAutomatically = true
+            allowContentAccess = true
+            allowFileAccess = false
             useWideViewPort = true
             loadWithOverviewMode = true
             builtInZoomControls = false
@@ -160,6 +168,13 @@ class MainActivity : Activity() {
         webView.setOnCreateContextMenuListener { menu: ContextMenu, _, _ -> menu.clear() }
         webView.setOnTouchListener { _, event ->
             event.pointerCount > 1 || event.actionMasked == MotionEvent.ACTION_POINTER_DOWN
+        }
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
+                lastConsoleMessage =
+                    "${consoleMessage.message()} (${consoleMessage.sourceId()}:${consoleMessage.lineNumber()})"
+                return true
+            }
         }
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -696,12 +711,16 @@ class MainActivity : Activity() {
             webView.evaluateJavascript(
                 """
                 (function() {
-                  return (document.body && document.body.innerText || '').trim().length;
+                  var app = document.getElementById('app');
+                  var textLength = (document.body && document.body.innerText || '').trim().length;
+                  var appArea = app ? (app.scrollWidth * app.scrollHeight) : 0;
+                  var bodyArea = document.body ? (document.body.scrollWidth * document.body.scrollHeight) : 0;
+                  return textLength + appArea + bodyArea;
                 })();
                 """.trimIndent(),
             ) { rawResult ->
-                val textLength = rawResult.trim('"').toIntOrNull() ?: 0
-                val looksBlank = textLength == 0
+                val visibleScore = rawResult.trim('"').toIntOrNull() ?: 0
+                val looksBlank = visibleScore == 0
                 if (looksBlank && hasNetwork()) {
                     blankPageReloadCount += 1
                     loadingView.text = "Reloading forum..."
@@ -710,9 +729,7 @@ class MainActivity : Activity() {
                     if (blankPageReloadCount <= MAX_BLANK_PAGE_RELOADS) {
                         webView.reload()
                     } else {
-                        webView.clearCache(true)
-                        webView.loadUrl(KIOSK_URL)
-                        blankPageReloadCount = 0
+                        showRenderProblem()
                     }
                 } else {
                     blankPageReloadCount = 0
@@ -722,6 +739,20 @@ class MainActivity : Activity() {
                 }
             }
         }, BLANK_PAGE_CHECK_DELAY_MS)
+    }
+
+    private fun showRenderProblem() {
+        val message = if (lastConsoleMessage.isBlank()) {
+            "Website did not render.\nPlease update Android System WebView or Chrome, then reload."
+        } else {
+            "Website did not render.\n$lastConsoleMessage"
+        }
+        loadingView.text = "$message\nRetrying..."
+        loadingView.visibility = View.VISIBLE
+        offlineView.visibility = View.GONE
+        webView.clearCache(true)
+        blankPageReloadCount = 0
+        webView.postDelayed({ webView.loadUrl(KIOSK_URL) }, RETRY_DELAY_MS)
     }
 
     private fun hasNetwork(): Boolean {
