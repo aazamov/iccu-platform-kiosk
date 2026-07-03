@@ -183,7 +183,9 @@ cd C:\Kiosk\iccu-forum-kiosk
 tools\provision_kiosk_tablet.bat
 ```
 
-Если подключено несколько планшетов, сначала посмотреть serial:
+Если подключено несколько планшетов, скрипт установит kiosk на все планшеты со статусом `device`.
+
+Если нужно установить только на один конкретный планшет, сначала посмотреть serial:
 
 ```powershell
 adb devices
@@ -193,6 +195,12 @@ adb devices
 
 ```powershell
 tools\provision_kiosk_tablet.bat -Serial KZ5CAEJ85LX5DSZFRYW
+```
+
+Если нужно вернуть старое поведение и запретить автоматическую установку на несколько планшетов:
+
+```powershell
+tools\provision_kiosk_tablet.bat -SingleDevice
 ```
 
 Если APK уже собран и нужно быстрее:
@@ -282,6 +290,8 @@ tools\uninstall_kiosk_tablet.bat -Serial KZ5CAEJ85LX5DSZFRYW
 cd C:\Kiosk\iccu-forum-kiosk
 tools\provision_kiosk_tablet.bat
 ```
+
+Можно подключить несколько планшетов через USB hub. Скрипт соберёт APK один раз, потом установит приложение на каждый планшет по очереди и покажет summary.
 
 Для удаления приложения:
 

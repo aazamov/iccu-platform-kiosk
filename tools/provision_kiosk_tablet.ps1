@@ -10,12 +10,13 @@ param(
     [string]$WebViewApk = "",
     [string]$WebViewApkUrl = "",
     [switch]$SkipWebViewUpdate,
-    [int]$MinimumWebViewMajor = 100
+    [int]$MinimumWebViewMajor = 100,
+    [switch]$SingleDevice
 )
 
 $ErrorActionPreference = "Stop"
 
-$ScriptVersion = "2026-07-03.7"
+$ScriptVersion = "2026-07-03.8"
 $AppPackage = "uz.neovex.iccu.kiosk"
 $MainActivity = "uz.neovex.iccu.kiosk/.MainActivity"
 $AdminReceiver = "uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -465,7 +466,7 @@ function Get-DeviceRows {
     return $rows
 }
 
-function Select-Device {
+function Select-TargetDevices {
     Run-Adb -Arguments @("start-server")
 
     $rows = Get-DeviceRows
@@ -479,23 +480,37 @@ function Select-Device {
             Fail "Device $($script:Serial) is not ready. Current state: $($match.State)"
         }
         Write-Ok "Using tablet $($script:Serial)"
-        return
+        return @($script:Serial)
     }
 
     $ready = @($rows | Where-Object { $_.State -eq "device" })
     $unauthorized = @($rows | Where-Object { $_.State -eq "unauthorized" })
     $offline = @($rows | Where-Object { $_.State -eq "offline" })
 
-    if ($ready.Count -eq 1) {
+    if ($ready.Count -eq 1 -or ($ready.Count -gt 1 -and -not $SingleDevice)) {
+        if ($ready.Count -gt 1) {
+            Write-Ok "Using all ready tablets: $($ready.Count)"
+            $ready | ForEach-Object { Write-Host "  $($_.Serial)" }
+            if ($unauthorized.Count -gt 0) {
+                Write-Warn "Skipping unauthorized tablet(s). Approve USB debugging and run again for them:"
+                $unauthorized | ForEach-Object { Write-Host "  $($_.Serial)" }
+            }
+            if ($offline.Count -gt 0) {
+                Write-Warn "Skipping offline tablet(s):"
+                $offline | ForEach-Object { Write-Host "  $($_.Serial)" }
+            }
+            return @($ready | ForEach-Object { $_.Serial })
+        }
+
         $script:Serial = $ready[0].Serial
         Write-Ok "Using tablet $($script:Serial)"
-        return
+        return @($script:Serial)
     }
 
     if ($ready.Count -gt 1) {
         Write-Host "More than one tablet is connected:"
         $ready | ForEach-Object { Write-Host "  $($_.Serial)" }
-        Fail "Run again with -Serial DEVICE_SERIAL"
+        Fail "Run again with -Serial DEVICE_SERIAL, or omit -SingleDevice to install all ready tablets"
     }
 
     if ($unauthorized.Count -gt 0) {
@@ -511,6 +526,11 @@ function Select-Device {
     }
 
     Fail "No ready tablet found. Connect one tablet and run: adb devices"
+}
+
+function Select-Device {
+    $targets = Select-TargetDevices
+    $script:Serial = $targets[0]
 }
 
 function Refresh-AdbConnection {
@@ -870,6 +890,48 @@ function Verify-Kiosk {
     Write-Ok "Kiosk verified: mLockTaskModeState=LOCKED"
 }
 
+function Provision-CurrentDevice {
+    Ensure-WebViewUpdated
+    Build-Apk
+    Install-Apk
+    Ensure-DeviceOwner
+    Configure-Kiosk
+    Launch-App
+    Verify-Kiosk
+}
+
+function Invoke-SingleDeviceProvisioning {
+    param([string]$TargetSerial)
+
+    $arguments = @(
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        $PSCommandPath,
+        "-Serial",
+        $TargetSerial,
+        "-SkipBuild",
+        "-SingleDevice",
+        "-MinimumWebViewMajor",
+        "$MinimumWebViewMajor"
+    )
+
+    if ($NoTests) { $arguments += "-NoTests" }
+    if ($NoDownloads) { $arguments += "-NoDownloads" }
+    if ($SkipWebViewUpdate) { $arguments += "-SkipWebViewUpdate" }
+    if ($WebViewApk -ne "") {
+        $arguments += @("-WebViewApk", $WebViewApk)
+    }
+    if ($WebViewApkUrl -ne "") {
+        $arguments += @("-WebViewApkUrl", $WebViewApkUrl)
+    }
+
+    Write-Step "Provisioning tablet $TargetSerial"
+    $code = Invoke-NativeStream -File "powershell.exe" -Arguments $arguments
+    return $code
+}
+
 $script:Serial = $Serial
 Write-Host "ICCU provisioning script version: $ScriptVersion" -ForegroundColor White
 Configure-Java
@@ -904,14 +966,45 @@ if ($SkipWebViewUpdate) {
 }
 Write-Host ""
 
-Select-Device
-Ensure-WebViewUpdated
-Build-Apk
-Install-Apk
-Ensure-DeviceOwner
-Configure-Kiosk
-Launch-App
-Verify-Kiosk
+$targets = @(Select-TargetDevices)
+
+if ($targets.Count -gt 1 -and -not $SingleDevice) {
+    Build-Apk
+
+    $results = @()
+    foreach ($target in $targets) {
+        Write-Host ""
+        Write-Host "================ TABLET $target ================" -ForegroundColor White
+        $code = Invoke-SingleDeviceProvisioning -TargetSerial $target
+        $results += [PSCustomObject]@{
+            Serial = $target
+            Code = $code
+            Status = if ($code -eq 0) { "OK" } else { "FAILED" }
+        }
+    }
+
+    Write-Host ""
+    Write-Host "Provisioning summary:" -ForegroundColor White
+    $results | ForEach-Object {
+        if ($_.Code -eq 0) {
+            Write-Host "OK: $($_.Serial)" -ForegroundColor Green
+        } else {
+            Write-Host "FAILED: $($_.Serial) (exit $($_.Code))" -ForegroundColor Red
+        }
+    }
+
+    $failed = @($results | Where-Object { $_.Code -ne 0 })
+    if ($failed.Count -gt 0) {
+        Fail "$($failed.Count) tablet(s) failed provisioning"
+    }
+
+    Write-Host ""
+    Write-Host "DONE: $($results.Count) tablet(s) are ready for kiosk use." -ForegroundColor Green
+    exit 0
+}
+
+$script:Serial = $targets[0]
+Provision-CurrentDevice
 
 Write-Host ""
 Write-Host "DONE: tablet $($script:Serial) is ready for kiosk use." -ForegroundColor Green

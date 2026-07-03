@@ -75,6 +75,8 @@ On a clean Windows computer, the PowerShell script can download portable Java 17
 tools\provision_kiosk_tablet.bat -PrepareTools
 ```
 
+On Windows, running without `-Serial` provisions all connected authorized tablets. Use `-Serial DEVICE_SERIAL` for one tablet only.
+
 For tablets without a Google account, the Windows script tries to download a compatible Android System WebView APK automatically when WebView is old. For stable operator setup, you can also put the APK here before provisioning:
 
 ```text
