@@ -65,6 +65,24 @@ function Invoke-NativeCapture {
     }
 }
 
+function Invoke-NativeStream {
+    param(
+        [string]$File,
+        [string[]]$Arguments
+    )
+
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $File @Arguments 2>&1 | ForEach-Object { Write-Host $_.ToString() }
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    return $code
+}
+
 function Ensure-Directory {
     param([string]$Path)
     if (-not (Test-Path $Path)) {
@@ -246,11 +264,8 @@ function Run-Command {
     )
 
     Write-Step "$File $($Arguments -join ' ')"
-    $result = Invoke-NativeCapture -File $File -Arguments $Arguments
-    if ($result.Text -ne "") {
-        Write-Host $result.Text
-    }
-    if ($result.Code -ne 0) {
+    $code = Invoke-NativeStream -File $File -Arguments $Arguments
+    if ($code -ne 0) {
         Fail "Command failed: $File $($Arguments -join ' ')"
     }
 }
