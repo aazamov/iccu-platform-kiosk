@@ -75,6 +75,14 @@ On a clean Windows computer, the PowerShell script can download portable Java 17
 tools\provision_kiosk_tablet.bat -PrepareTools
 ```
 
+For tablets without a Google account, put a compatible Android System WebView APK here before provisioning:
+
+```text
+tools\.downloads\android-system-webview.apk
+```
+
+The Windows provisioning script updates old WebView versions automatically before enabling kiosk mode. For HK17 Android 10 tablets, use `com.google.android.webview` for `arm64-v8a + armeabi-v7a`, Android 10/API 29+.
+
 ## Windows Uninstall
 
 To remove the kiosk app from a connected tablet on Windows:

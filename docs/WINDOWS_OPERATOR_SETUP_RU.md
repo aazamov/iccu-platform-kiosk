@@ -19,13 +19,15 @@ tools\provision_kiosk_tablet.bat
 Скрипт сам делает:
 
 1. Находит подключённый планшет через ADB.
-2. Собирает APK.
-3. Устанавливает APK.
-4. Включает Device Owner.
-5. Назначает приложение как Home screen.
-6. Включает fullscreen/immersive mode.
-7. Запускает kiosk app.
-8. Проверяет `mLockTaskModeState=LOCKED`.
+2. Проверяет Android System WebView.
+3. Если WebView старый, обновляет его из локального APK.
+4. Собирает APK.
+5. Устанавливает APK.
+6. Включает Device Owner.
+7. Назначает приложение как Home screen.
+8. Включает fullscreen/immersive mode.
+9. Запускает kiosk app.
+10. Проверяет `mLockTaskModeState=LOCKED`.
 
 Если в конце написано:
 
@@ -62,6 +64,26 @@ C:\Kiosk\iccu-forum-kiosk\tools\.portable
 После первого запуска интернет для Java/Android SDK/ADB уже не нужен, потому что tools будут лежать локально в `tools\.portable`.
 
 Если на компьютере уже установлены Java 17 и ADB, скрипт использует их.
+
+Android System WebView APK нужно подготовить отдельно и положить сюда:
+
+```text
+C:\Kiosk\iccu-forum-kiosk\tools\.downloads\android-system-webview.apk
+```
+
+Для HK17 Pro Max / Android 10 нужен WebView:
+
+```text
+package: com.google.android.webview
+arch: arm64-v8a + armeabi-v7a
+minimum Android: Android 10 / API 29
+```
+
+Можно также положить файл с именем:
+
+```text
+tools\.downloads\android-system-webview-150.apk
+```
 
 ### USB driver
 
@@ -193,6 +215,18 @@ tools\provision_kiosk_tablet.bat -PrepareTools
 
 ```powershell
 tools\provision_kiosk_tablet.bat -BuildOnly
+```
+
+Если нужно указать свой путь к WebView APK:
+
+```powershell
+tools\provision_kiosk_tablet.bat -WebViewApk C:\Kiosk\android-system-webview.apk
+```
+
+Если планшет уже обновлён и проверку WebView нужно пропустить:
+
+```powershell
+tools\provision_kiosk_tablet.bat -SkipWebViewUpdate
 ```
 
 ## 7. Удаление kiosk-приложения с планшета

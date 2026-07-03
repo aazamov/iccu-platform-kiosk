@@ -6,20 +6,25 @@ param(
     [string]$Adb = "",
     [switch]$NoDownloads,
     [switch]$PrepareTools,
-    [switch]$BuildOnly
+    [switch]$BuildOnly,
+    [string]$WebViewApk = "",
+    [switch]$SkipWebViewUpdate,
+    [int]$MinimumWebViewMajor = 100
 )
 
 $ErrorActionPreference = "Stop"
 
-$ScriptVersion = "2026-07-03.4"
+$ScriptVersion = "2026-07-03.5"
 $AppPackage = "uz.neovex.iccu.kiosk"
 $MainActivity = "uz.neovex.iccu.kiosk/.MainActivity"
 $AdminReceiver = "uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
+$WebViewPackage = "com.google.android.webview"
 $ApkRelativePath = "app\build\outputs\apk\debug\app-debug.apk"
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $ApkPath = Join-Path $ProjectRoot $ApkRelativePath
 $GradlewPath = Join-Path $ProjectRoot "gradlew.bat"
 $PortableRoot = Join-Path $ProjectRoot "tools\.portable"
+$DownloadsRoot = Join-Path $ProjectRoot "tools\.downloads"
 $PlatformToolsUrl = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
 $CommandLineToolsUrl = "https://dl.google.com/android/repository/commandlinetools-win-13114758_latest.zip"
 $Jdk17Url = "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk"
@@ -548,6 +553,131 @@ function Build-Apk {
     Write-Ok "APK ready: $ApkRelativePath"
 }
 
+function Resolve-WebViewApk {
+    if ($WebViewApk -ne "") {
+        if (Test-Path $WebViewApk) {
+            return (Resolve-Path $WebViewApk).Path
+        }
+        Fail "WebView APK path is not valid: $WebViewApk"
+    }
+
+    $candidates = @(
+        (Join-Path $DownloadsRoot "android-system-webview.apk"),
+        (Join-Path $DownloadsRoot "android-system-webview-150.apk"),
+        (Join-Path $DownloadsRoot "android-system-webview-149.apk"),
+        (Join-Path $ProjectRoot "tools\android-system-webview.apk")
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path $candidate) {
+            return (Resolve-Path $candidate).Path
+        }
+    }
+
+    return ""
+}
+
+function Get-CurrentWebViewVersion {
+    $dump = Capture-AdbDevice -Arguments @("shell", "dumpsys", "webviewupdate")
+    if ($dump.Text -match "Current WebView package \(name, version\): \($([regex]::Escape($WebViewPackage)),\s*([0-9][^)]+)\)") {
+        return $Matches[1].Trim()
+    }
+
+    $packageDump = Capture-AdbDevice -Arguments @("shell", "dumpsys", "package", $WebViewPackage)
+    if ($packageDump.Text -match "versionName=([0-9][^\s]+)") {
+        return $Matches[1].Trim()
+    }
+
+    return ""
+}
+
+function Get-VersionMajor {
+    param([string]$Version)
+
+    if ($Version -match "^(\d+)") {
+        return [int]$Matches[1]
+    }
+    return 0
+}
+
+function Install-WebView-Apk {
+    param([string]$Path)
+
+    Write-Step "Installing Android System WebView: $Path"
+    $result = Capture-AdbDevice -Arguments @("install", "-r", $Path)
+    Write-Host $result.Text
+    if ($result.Code -eq 0) {
+        return
+    }
+
+    if ($result.Text -match "closed") {
+        Refresh-AdbConnection
+        Write-Step "Retrying WebView install"
+        $result = Capture-AdbDevice -Arguments @("install", "-r", $Path)
+        Write-Host $result.Text
+        if ($result.Code -eq 0) {
+            return
+        }
+
+        Write-Step "Retrying WebView install with --no-streaming"
+        $result = Capture-AdbDevice -Arguments @("install", "--no-streaming", "-r", $Path)
+        Write-Host $result.Text
+        if ($result.Code -eq 0) {
+            return
+        }
+    }
+
+    Fail "Android System WebView install failed"
+}
+
+function Ensure-WebViewUpdated {
+    if ($SkipWebViewUpdate) {
+        Write-Warn "Skipping WebView update because -SkipWebViewUpdate was used"
+        return
+    }
+
+    $currentVersion = Get-CurrentWebViewVersion
+    $currentMajor = Get-VersionMajor -Version $currentVersion
+
+    if ($currentVersion -ne "" -and $currentMajor -ge $MinimumWebViewMajor) {
+        Write-Ok "Android System WebView is already new enough: $currentVersion"
+        return
+    }
+
+    if ($currentVersion -eq "") {
+        Write-Warn "Could not read current Android System WebView version"
+    } else {
+        Write-Warn "Android System WebView is old: $currentVersion. Minimum required major: $MinimumWebViewMajor"
+    }
+
+    $webViewApkPath = Resolve-WebViewApk
+    if ($webViewApkPath -eq "") {
+        Write-Host ""
+        Write-Host "Put Android System WebView APK here, then run again:"
+        Write-Host "  tools\.downloads\android-system-webview.apk"
+        Write-Host ""
+        Write-Host "For HK17 Android 10 tablets use:"
+        Write-Host "  package: $WebViewPackage"
+        Write-Host "  arch: arm64-v8a + armeabi-v7a"
+        Write-Host "  min Android: Android 10 / API 29"
+        Write-Host ""
+        Fail "WebView APK is required because tablet WebView is old"
+    }
+
+    Install-WebView-Apk -Path $webViewApkPath
+    Start-Sleep -Seconds 2
+
+    $updatedVersion = Get-CurrentWebViewVersion
+    $updatedMajor = Get-VersionMajor -Version $updatedVersion
+    if ($updatedVersion -eq "" -or $updatedMajor -lt $MinimumWebViewMajor) {
+        $dump = Capture-AdbDevice -Arguments @("shell", "dumpsys", "webviewupdate")
+        Write-Host $dump.Text
+        Fail "WebView update did not become active"
+    }
+
+    Write-Ok "Android System WebView updated: $updatedVersion"
+}
+
 function Install-Apk {
     Write-Step "Installing APK"
     $result = Capture-AdbDevice -Arguments @("install", "-r", $ApkPath)
@@ -707,9 +837,15 @@ Write-Host "Project: $ProjectRoot"
 Write-Host "Package: $AppPackage"
 Write-Host "ADB: $script:AdbPath"
 Write-Host "JAVA_HOME: $env:JAVA_HOME"
+if ($SkipWebViewUpdate) {
+    Write-Host "WebView update: skipped"
+} else {
+    Write-Host "WebView minimum major: $MinimumWebViewMajor"
+}
 Write-Host ""
 
 Select-Device
+Ensure-WebViewUpdated
 Build-Apk
 Install-Apk
 Ensure-DeviceOwner
