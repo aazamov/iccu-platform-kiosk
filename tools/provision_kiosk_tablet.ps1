@@ -11,7 +11,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ScriptVersion = "2026-07-03.2"
+$ScriptVersion = "2026-07-03.3"
 $AppPackage = "uz.neovex.iccu.kiosk"
 $MainActivity = "uz.neovex.iccu.kiosk/.MainActivity"
 $AdminReceiver = "uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -315,9 +315,7 @@ function Invoke-SdkManager {
 
     $processInfo = New-Object System.Diagnostics.ProcessStartInfo
     $processInfo.FileName = $SdkManager
-    foreach ($argument in $arguments) {
-        [void]$processInfo.ArgumentList.Add($argument)
-    }
+    $processInfo.Arguments = ($arguments | ForEach-Object { '"' + ($_ -replace '"', '\"') + '"' }) -join " "
     $processInfo.RedirectStandardInput = $true
     $processInfo.RedirectStandardOutput = $false
     $processInfo.RedirectStandardError = $false
