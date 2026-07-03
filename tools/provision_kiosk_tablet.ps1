@@ -11,12 +11,16 @@ param(
     [string]$WebViewApkUrl = "",
     [switch]$SkipWebViewUpdate,
     [int]$MinimumWebViewMajor = 100,
+    [string]$WifiSsid = "Neo_wifi",
+    [string]$WifiPassword = "12345678!!",
+    [switch]$SkipWifiSetup,
+    [int]$WifiConnectTimeoutSeconds = 35,
     [switch]$SingleDevice
 )
 
 $ErrorActionPreference = "Stop"
 
-$ScriptVersion = "2026-07-03.8"
+$ScriptVersion = "2026-07-03.9"
 $AppPackage = "uz.neovex.iccu.kiosk"
 $MainActivity = "uz.neovex.iccu.kiosk/.MainActivity"
 $AdminReceiver = "uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -440,6 +444,109 @@ function Capture-AdbDevice {
     param([string[]]$Arguments)
     $fullArguments = @("-s", $script:Serial) + $Arguments
     return Invoke-NativeCapture -File $script:AdbPath -Arguments $fullArguments
+}
+
+function Normalize-WifiSsid {
+    param([string]$Ssid)
+
+    if (-not $Ssid) {
+        return ""
+    }
+
+    $normalized = $Ssid.Trim() -replace '^"|"$', ''
+    if ($normalized -eq "<unknown ssid>") {
+        return ""
+    }
+
+    return $normalized
+}
+
+function Get-CurrentWifiSsid {
+    $status = Capture-AdbDevice -Arguments @("shell", "cmd", "wifi", "status")
+    if ($status.Code -eq 0 -and $status.Text -ne "") {
+        foreach ($line in $status.Lines) {
+            if ($line -match 'SSID:\s*"([^"]+)"') {
+                return (Normalize-WifiSsid -Ssid $Matches[1])
+            }
+            if ($line -match 'SSID:\s*([^,\r\n]+)') {
+                return (Normalize-WifiSsid -Ssid $Matches[1])
+            }
+        }
+    }
+
+    $dump = Capture-AdbDevice -Arguments @("shell", "dumpsys", "wifi")
+    if ($dump.Text -eq "") {
+        return ""
+    }
+
+    foreach ($line in $dump.Lines) {
+        if ($line -notmatch "mWifiInfo|WifiInfo") {
+            continue
+        }
+        if ($line -match 'SSID:\s*"([^"]+)"') {
+            return (Normalize-WifiSsid -Ssid $Matches[1])
+        }
+        if ($line -match 'SSID:\s*([^,\r\n]+)') {
+            return (Normalize-WifiSsid -Ssid $Matches[1])
+        }
+    }
+
+    return ""
+}
+
+function Ensure-WifiConnected {
+    if ($SkipWifiSetup) {
+        Write-Warn "Skipping Wi-Fi setup because -SkipWifiSetup was used"
+        return
+    }
+
+    if ($WifiSsid -eq "") {
+        Write-Warn "Skipping Wi-Fi setup because -WifiSsid is empty"
+        return
+    }
+
+    $currentSsid = Get-CurrentWifiSsid
+    if ($currentSsid -eq $WifiSsid) {
+        Write-Ok "Wi-Fi already connected: $WifiSsid"
+        return
+    }
+
+    Write-Step "Connecting Wi-Fi to $WifiSsid"
+    $enable = Capture-AdbDevice -Arguments @("shell", "svc", "wifi", "enable")
+    if ($enable.Code -ne 0 -and $enable.Text -ne "") {
+        Write-Warn "Could not enable Wi-Fi with svc: $($enable.Text)"
+    }
+    Start-Sleep -Seconds 2
+
+    $connect = Capture-AdbDevice -Arguments @("shell", "cmd", "wifi", "connect-network", $WifiSsid, "wpa2", $WifiPassword)
+    if ($connect.Text -ne "") {
+        Write-Host $connect.Text
+    }
+
+    if ($connect.Code -ne 0) {
+        Write-Host ""
+        Write-Host "Wi-Fi setup failed. This Android build may not support:"
+        Write-Host "  adb shell cmd wifi connect-network SSID wpa2 PASSWORD"
+        Write-Host ""
+        Write-Host "Connect the tablet manually to Wi-Fi '$WifiSsid', or run with:"
+        Write-Host "  tools\provision_kiosk_tablet.bat -SkipWifiSetup"
+        Fail "Wi-Fi connect command failed"
+    }
+
+    $deadline = (Get-Date).AddSeconds($WifiConnectTimeoutSeconds)
+    do {
+        Start-Sleep -Seconds 3
+        $currentSsid = Get-CurrentWifiSsid
+        if ($currentSsid -eq $WifiSsid) {
+            Write-Ok "Wi-Fi connected: $WifiSsid"
+            return
+        }
+    } while ((Get-Date) -lt $deadline)
+
+    if ($currentSsid -ne "") {
+        Write-Warn "Tablet is connected to Wi-Fi '$currentSsid', expected '$WifiSsid'"
+    }
+    Fail "Wi-Fi did not connect to $WifiSsid within $WifiConnectTimeoutSeconds seconds"
 }
 
 function Get-DeviceRows {
@@ -891,6 +998,7 @@ function Verify-Kiosk {
 }
 
 function Provision-CurrentDevice {
+    Ensure-WifiConnected
     Ensure-WebViewUpdated
     Build-Apk
     Install-Apk
@@ -914,12 +1022,19 @@ function Invoke-SingleDeviceProvisioning {
         "-SkipBuild",
         "-SingleDevice",
         "-MinimumWebViewMajor",
-        "$MinimumWebViewMajor"
+        "$MinimumWebViewMajor",
+        "-WifiSsid",
+        $WifiSsid,
+        "-WifiPassword",
+        $WifiPassword,
+        "-WifiConnectTimeoutSeconds",
+        "$WifiConnectTimeoutSeconds"
     )
 
     if ($NoTests) { $arguments += "-NoTests" }
     if ($NoDownloads) { $arguments += "-NoDownloads" }
     if ($SkipWebViewUpdate) { $arguments += "-SkipWebViewUpdate" }
+    if ($SkipWifiSetup) { $arguments += "-SkipWifiSetup" }
     if ($WebViewApk -ne "") {
         $arguments += @("-WebViewApk", $WebViewApk)
     }
@@ -963,6 +1078,11 @@ if ($SkipWebViewUpdate) {
     Write-Host "WebView update: skipped"
 } else {
     Write-Host "WebView minimum major: $MinimumWebViewMajor"
+}
+if ($SkipWifiSetup) {
+    Write-Host "Wi-Fi setup: skipped"
+} else {
+    Write-Host "Wi-Fi SSID: $WifiSsid"
 }
 Write-Host ""
 

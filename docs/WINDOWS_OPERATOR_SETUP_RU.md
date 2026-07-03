@@ -19,15 +19,16 @@ tools\provision_kiosk_tablet.bat
 Скрипт сам делает:
 
 1. Находит подключённый планшет через ADB.
-2. Проверяет Android System WebView.
-3. Если WebView старый, обновляет его из локального APK.
-4. Собирает APK.
-5. Устанавливает APK.
-6. Включает Device Owner.
-7. Назначает приложение как Home screen.
-8. Включает fullscreen/immersive mode.
-9. Запускает kiosk app.
-10. Проверяет `mLockTaskModeState=LOCKED`.
+2. Включает Wi-Fi и подключает планшет к `Neo_wifi`.
+3. Проверяет Android System WebView.
+4. Если WebView старый, обновляет его из локального APK.
+5. Собирает APK.
+6. Устанавливает APK.
+7. Включает Device Owner.
+8. Назначает приложение как Home screen.
+9. Включает fullscreen/immersive mode.
+10. Запускает kiosk app.
+11. Проверяет `mLockTaskModeState=LOCKED`.
 
 Если в конце написано:
 
@@ -201,6 +202,24 @@ tools\provision_kiosk_tablet.bat -Serial KZ5CAEJ85LX5DSZFRYW
 
 ```powershell
 tools\provision_kiosk_tablet.bat -SingleDevice
+```
+
+По умолчанию скрипт сначала подключает каждый планшет к Wi-Fi:
+
+```text
+SSID: Neo_wifi
+```
+
+Если нужно указать другую сеть:
+
+```powershell
+tools\provision_kiosk_tablet.bat -WifiSsid "OfficeWifi" -WifiPassword "password"
+```
+
+Если Wi-Fi уже настроен вручную и этот шаг нужно пропустить:
+
+```powershell
+tools\provision_kiosk_tablet.bat -SkipWifiSetup
 ```
 
 Если APK уже собран и нужно быстрее:
