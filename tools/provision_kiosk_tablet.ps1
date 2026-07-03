@@ -11,7 +11,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ScriptVersion = "2026-07-03.3"
+$ScriptVersion = "2026-07-03.4"
 $AppPackage = "uz.neovex.iccu.kiosk"
 $MainActivity = "uz.neovex.iccu.kiosk/.MainActivity"
 $AdminReceiver = "uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -582,8 +582,7 @@ function Install-Apk {
 }
 
 function Ensure-DeviceOwner {
-    $owner = Capture-AdbDevice -Arguments @("shell", "dpm", "get-device-owner")
-    if ($owner.Text -match [regex]::Escape($AppPackage)) {
+    if (Test-OurAppIsDeviceOwner) {
         Write-Ok "Device Owner already set to $AppPackage"
         return
     }
@@ -596,12 +595,60 @@ function Ensure-DeviceOwner {
         return
     }
 
+    if ($result.Text -match "device owner is already set") {
+        if (Test-OurAppIsDeviceOwner) {
+            Write-Ok "Device Owner already set to $AppPackage"
+            return
+        }
+
+        $ownerDetails = Get-DeviceOwnerDetails
+        Write-Host ""
+        Write-Host "Another Device Owner is already set on this tablet:"
+        Write-Host $ownerDetails
+        Write-Host ""
+        Write-Host "Android does not allow replacing another Device Owner from a normal APK/ADB install."
+        Write-Host "To install this kiosk as Device Owner, factory reset the tablet, do not add accounts, enable USB debugging, then run this script again."
+        Fail "Cannot replace existing Device Owner"
+    }
+
     Write-Host ""
     Write-Host "Device Owner setup failed. Most common fixes:"
     Write-Host "- Remove Google/account(s) from the tablet"
     Write-Host "- Factory reset the tablet, do not add an account, enable USB debugging, then run this script"
     Write-Host "- Make sure the APK was installed before Device Owner setup"
     Fail "Cannot continue without Device Owner"
+}
+
+function Get-DeviceOwnerDetails {
+    $dpmOwner = Capture-AdbDevice -Arguments @("shell", "dpm", "get-device-owner")
+    $policyDump = Capture-AdbDevice -Arguments @("shell", "dumpsys", "device_policy")
+
+    $lines = @()
+    if ($dpmOwner.Text -ne "") {
+        $lines += $dpmOwner.Text
+    }
+    if ($policyDump.Text -ne "") {
+        $interesting = $policyDump.Lines |
+            Where-Object {
+                $_ -match "Device Owner" -or
+                $_ -match "device owner" -or
+                $_ -match "admin=" -or
+                $_ -match "ComponentInfo" -or
+                $_ -match "mDeviceOwner"
+            } |
+            Select-Object -First 20
+        $lines += $interesting
+    }
+
+    if ($lines.Count -eq 0) {
+        return "Unable to read owner details. Run: adb shell dpm get-device-owner"
+    }
+    return ($lines -join "`n")
+}
+
+function Test-OurAppIsDeviceOwner {
+    $ownerDetails = Get-DeviceOwnerDetails
+    return $ownerDetails -match [regex]::Escape($AppPackage)
 }
 
 function Configure-Kiosk {

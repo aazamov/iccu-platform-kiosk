@@ -31,6 +31,7 @@ import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -46,6 +47,7 @@ import android.widget.Toast
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var offlineView: TextView
+    private lateinit var loadingView: TextView
     private lateinit var batteryText: TextView
     private lateinit var wifiButton: ImageButton
     private lateinit var brightnessPanel: LinearLayout
@@ -166,8 +168,20 @@ class MainActivity : Activity() {
 
             override fun onPageFinished(view: WebView, url: String) {
                 disablePageZoomAndSelection(view)
+                loadingView.visibility = View.GONE
                 offlineView.visibility = View.GONE
                 webView.visibility = View.VISIBLE
+                scheduleBlankPageRecovery()
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView,
+                request: WebResourceRequest,
+                errorResponse: WebResourceResponse,
+            ) {
+                if (request.isForMainFrame) {
+                    showOfflineMessage("Website unavailable (${errorResponse.statusCode})")
+                }
             }
 
             override fun onReceivedError(
@@ -175,7 +189,7 @@ class MainActivity : Activity() {
                 request: WebResourceRequest,
                 error: WebResourceError,
             ) {
-                if (request.isForMainFrame) showOfflineMessage()
+                if (request.isForMainFrame) showOfflineMessage("Connection unavailable")
             }
         }
     }
@@ -198,6 +212,14 @@ class MainActivity : Activity() {
             textSize = 22f
             gravity = Gravity.CENTER
             visibility = View.GONE
+        }
+        loadingView = TextView(this).apply {
+            setBackgroundColor(Color.WHITE)
+            setTextColor(Color.rgb(28, 28, 28))
+            text = "Loading forum..."
+            textSize = 22f
+            gravity = Gravity.CENTER
+            visibility = View.VISIBLE
         }
 
         wifiButton = ImageButton(this).apply {
@@ -372,6 +394,13 @@ class MainActivity : Activity() {
             )
             addView(
                 offlineView,
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                ),
+            )
+            addView(
+                loadingView,
                 FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -583,6 +612,9 @@ class MainActivity : Activity() {
         webView.clearCache(true)
         webView.clearHistory()
         webView.clearFormData()
+        loadingView.text = "Reloading forum..."
+        loadingView.visibility = View.VISIBLE
+        offlineView.visibility = View.GONE
         webView.loadUrl(KIOSK_URL)
     }
 
@@ -626,6 +658,11 @@ class MainActivity : Activity() {
     }
 
     private fun loadKioskPage() {
+        loadingView.text = "Loading forum..."
+        loadingView.visibility = View.VISIBLE
+        offlineView.visibility = View.GONE
+        webView.visibility = View.VISIBLE
+
         if (hasNetwork()) {
             webView.onResume()
             webView.resumeTimers()
@@ -639,15 +676,40 @@ class MainActivity : Activity() {
             }, 3_000L)
             webView.postDelayed({ webView.reload() }, 8_000L)
             webView.postDelayed({ webView.reload() }, 15_000L)
+            webView.postDelayed({ scheduleBlankPageRecovery() }, 20_000L)
         } else {
-            showOfflineMessage()
+            showOfflineMessage("Connection unavailable")
         }
     }
 
-    private fun showOfflineMessage() {
+    private fun showOfflineMessage(message: String) {
         webView.visibility = View.GONE
+        loadingView.visibility = View.GONE
+        offlineView.text = "$message\nRetrying..."
         offlineView.visibility = View.VISIBLE
         offlineView.postDelayed({ loadKioskPage() }, RETRY_DELAY_MS)
+    }
+
+    private fun scheduleBlankPageRecovery() {
+        webView.postDelayed({
+            webView.evaluateJavascript(
+                """
+                (function() {
+                  var text = (document.body && document.body.innerText || '').trim();
+                  var area = document.body ? (document.body.scrollWidth * document.body.scrollHeight) : 0;
+                  return JSON.stringify({ textLength: text.length, area: area, readyState: document.readyState });
+                })();
+                """.trimIndent(),
+            ) { rawResult ->
+                val looksBlank = rawResult.contains("\"textLength\":0") || rawResult == "null"
+                if (looksBlank && hasNetwork()) {
+                    loadingView.text = "Reloading forum..."
+                    loadingView.visibility = View.VISIBLE
+                    offlineView.visibility = View.GONE
+                    webView.reload()
+                }
+            }
+        }, BLANK_PAGE_CHECK_DELAY_MS)
     }
 
     private fun hasNetwork(): Boolean {
@@ -691,6 +753,7 @@ class MainActivity : Activity() {
     companion object {
         private const val KIOSK_URL = "https://forum.iccu.uz/"
         private const val RETRY_DELAY_MS = 5_000L
+        private const val BLANK_PAGE_CHECK_DELAY_MS = 4_000L
         private const val EXIT_PRESS_DURATION_MS = 5_000L
         private const val CONTROL_PRESS_DURATION_MS = 3_000L
         private const val BRIGHTNESS_PANEL_HIDE_DELAY_MS = 6_000L
