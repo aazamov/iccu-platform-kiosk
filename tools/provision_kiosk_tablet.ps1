@@ -43,6 +43,28 @@ function Fail {
     exit 1
 }
 
+function Invoke-NativeCapture {
+    param(
+        [string]$File,
+        [string[]]$Arguments
+    )
+
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $output = & $File @Arguments 2>&1 | ForEach-Object { $_.ToString() }
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    return [PSCustomObject]@{
+        Code = $code
+        Text = ($output -join "`n")
+        Lines = @($output)
+    }
+}
+
 function Ensure-Directory {
     param([string]$Path)
     if (-not (Test-Path $Path)) {
@@ -86,7 +108,8 @@ function Expand-Zip {
 function Get-JavaMajorVersion {
     param([string]$JavaExe)
 
-    $versionText = (& $JavaExe -version 2>&1) -join "`n"
+    $result = Invoke-NativeCapture -File $JavaExe -Arguments @("-version")
+    $versionText = $result.Text
     if ($versionText -match 'version "1\.(\d+)\.') {
         return [int]$Matches[1]
     }
@@ -223,8 +246,11 @@ function Run-Command {
     )
 
     Write-Step "$File $($Arguments -join ' ')"
-    & $File @Arguments
-    if ($LASTEXITCODE -ne 0) {
+    $result = Invoke-NativeCapture -File $File -Arguments $Arguments
+    if ($result.Text -ne "") {
+        Write-Host $result.Text
+    }
+    if ($result.Code -ne 0) {
         Fail "Command failed: $File $($Arguments -join ' ')"
     }
 }
@@ -242,22 +268,20 @@ function Run-AdbDevice {
 function Capture-AdbDevice {
     param([string[]]$Arguments)
     $fullArguments = @("-s", $script:Serial) + $Arguments
-    $output = & $script:AdbPath @fullArguments 2>&1
-    $code = $LASTEXITCODE
-    return [PSCustomObject]@{
-        Code = $code
-        Text = ($output -join "`n")
-    }
+    return Invoke-NativeCapture -File $script:AdbPath -Arguments $fullArguments
 }
 
 function Get-DeviceRows {
-    $text = & $script:AdbPath devices
-    if ($LASTEXITCODE -ne 0) {
+    $result = Invoke-NativeCapture -File $script:AdbPath -Arguments @("devices")
+    if ($result.Code -ne 0) {
+        if ($result.Text -ne "") {
+            Write-Host $result.Text
+        }
         Fail "adb devices failed"
     }
 
     $rows = @()
-    foreach ($line in $text) {
+    foreach ($line in $result.Lines) {
         $trimmed = $line.Trim()
         if ($trimmed -eq "" -or $trimmed.StartsWith("List of devices")) { continue }
         $parts = $trimmed -split "\s+"
