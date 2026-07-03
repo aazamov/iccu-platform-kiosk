@@ -42,6 +42,7 @@ DONE: tablet ... is ready for kiosk use.
 Скрипт сам проверит:
 
 - есть ли Java 17;
+- есть ли Android SDK для сборки;
 - есть ли `adb.exe`.
 
 Если их нет, скрипт сам скачает portable tools внутрь проекта:
@@ -53,9 +54,12 @@ C:\Kiosk\iccu-forum-kiosk\tools\.portable
 Первый запуск на новом Windows-компьютере требует интернет, потому что будут скачаны:
 
 - Temurin JDK 17;
-- Android SDK Platform Tools.
+- Android SDK Command-line Tools;
+- Android SDK Platform Tools;
+- Android platform `android-36`;
+- Android build-tools `36.0.0`.
 
-После первого запуска интернет для Java/ADB уже не нужен, потому что tools будут лежать локально в `tools\.portable`.
+После первого запуска интернет для Java/Android SDK/ADB уже не нужен, потому что tools будут лежать локально в `tools\.portable`.
 
 Если на компьютере уже установлены Java 17 и ADB, скрипт использует их.
 
@@ -112,7 +116,7 @@ cd C:\Kiosk\iccu-forum-kiosk
 tools\provision_kiosk_tablet.bat -PrepareTools
 ```
 
-Эта команда скачает portable Java 17 и ADB в `tools\.portable`, даже если планшет ещё не подключён.
+Эта команда скачает portable Java 17, Android SDK и ADB в `tools\.portable`, даже если планшет ещё не подключён.
 
 Для проверки только сборки APK без планшета:
 
@@ -177,7 +181,7 @@ tools\provision_kiosk_tablet.bat -SkipBuild
 tools\provision_kiosk_tablet.bat -NoTests
 ```
 
-Если нужно только заранее скачать portable Java/ADB:
+Если нужно только заранее скачать portable Java/Android SDK/ADB:
 
 ```powershell
 tools\provision_kiosk_tablet.bat -PrepareTools
@@ -196,7 +200,7 @@ tools\provision_kiosk_tablet.bat -BuildOnly
 1. Скопировать проект в `C:\Kiosk\iccu-forum-kiosk`.
 2. Убедиться, что есть интернет для первого запуска.
 3. Установить USB-драйвер планшета, если Windows не видит планшет.
-4. Запустить `tools\provision_kiosk_tablet.bat` один раз, чтобы скрипт сам скачал portable Java/ADB и установил первый планшет.
+4. Запустить `tools\provision_kiosk_tablet.bat` один раз, чтобы скрипт сам скачал portable Java/Android SDK/ADB и установил первый планшет.
 
 После этого каждый оператор делает только:
 
@@ -207,7 +211,7 @@ tools\provision_kiosk_tablet.bat
 
 ## 8. Частые ошибки
 
-### Нет Java или ADB
+### Нет Java, Android SDK или ADB
 
 Ничего устанавливать вручную не нужно. Запустите:
 
@@ -215,7 +219,7 @@ tools\provision_kiosk_tablet.bat
 tools\provision_kiosk_tablet.bat
 ```
 
-Скрипт сам скачает portable Java 17 и Android platform-tools.
+Скрипт сам скачает portable Java 17, Android SDK и Android platform-tools.
 
 Если интернет запрещён, подготовьте папку `tools\.portable` заранее на одном компьютере и скопируйте её на остальные компьютеры.
 

@@ -335,7 +335,9 @@ function Invoke-SdkManager {
 }
 
 function Write-LocalProperties {
-    $escapedSdkPath = $AndroidSdkRoot.Replace("\", "\\").Replace(":", "\:")
+    param([string]$SdkRoot)
+
+    $escapedSdkPath = $SdkRoot.Replace("\", "\\").Replace(":", "\:")
     $content = "sdk.dir=$escapedSdkPath`r`n"
     Set-Content -Path (Join-Path $ProjectRoot "local.properties") -Value $content -Encoding ASCII
 }
@@ -346,7 +348,7 @@ function Configure-AndroidSdk {
         $env:ANDROID_HOME = $candidate
         $env:ANDROID_SDK_ROOT = $candidate
         $env:PATH = (Join-Path $candidate "platform-tools") + [IO.Path]::PathSeparator + $env:PATH
-        Write-LocalProperties
+        Write-LocalProperties -SdkRoot $candidate
         Write-Ok "Using Android SDK: $candidate"
         return
     }
@@ -366,7 +368,7 @@ function Configure-AndroidSdk {
     $env:ANDROID_HOME = $AndroidSdkRoot
     $env:ANDROID_SDK_ROOT = $AndroidSdkRoot
     $env:PATH = (Join-Path $AndroidSdkRoot "platform-tools") + [IO.Path]::PathSeparator + $env:PATH
-    Write-LocalProperties
+    Write-LocalProperties -SdkRoot $AndroidSdkRoot
     Write-Ok "Using Android SDK: $AndroidSdkRoot"
 }
 
@@ -634,6 +636,7 @@ function Verify-Kiosk {
 
 $script:Serial = $Serial
 Configure-Java
+Configure-AndroidSdk
 
 if ($BuildOnly) {
     Build-Apk
