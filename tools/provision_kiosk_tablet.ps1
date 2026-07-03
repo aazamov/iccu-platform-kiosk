@@ -20,7 +20,11 @@ $ApkPath = Join-Path $ProjectRoot $ApkRelativePath
 $GradlewPath = Join-Path $ProjectRoot "gradlew.bat"
 $PortableRoot = Join-Path $ProjectRoot "tools\.portable"
 $PlatformToolsUrl = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+$CommandLineToolsUrl = "https://dl.google.com/android/repository/commandlinetools-win-13114758_latest.zip"
 $Jdk17Url = "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk"
+$AndroidSdkRoot = Join-Path $PortableRoot "android-sdk"
+$AndroidCompileSdk = "36"
+$AndroidBuildTools = "36.0.0"
 
 function Write-Step {
     param([string]$Message)
@@ -224,6 +228,148 @@ function Install-PortableAdb {
     return $adbPath
 }
 
+function Install-AndroidCommandLineTools {
+    $sdkManager = Join-Path $AndroidSdkRoot "cmdline-tools\latest\bin\sdkmanager.bat"
+    if (Test-Path $sdkManager) {
+        return $sdkManager
+    }
+
+    Ensure-Directory -Path $PortableRoot
+    Ensure-Directory -Path $AndroidSdkRoot
+
+    $zipPath = Join-Path $PortableRoot "commandlinetools-win-latest.zip"
+    $extractTemp = Join-Path $PortableRoot "cmdline-tools-temp"
+    $latestPath = Join-Path $AndroidSdkRoot "cmdline-tools\latest"
+
+    if (-not (Test-Path $zipPath)) {
+        Download-File -Url $CommandLineToolsUrl -OutFile $zipPath
+    }
+
+    if (Test-Path $extractTemp) {
+        Remove-Item -Path $extractTemp -Recurse -Force
+    }
+    Expand-Zip -ZipPath $zipPath -Destination $extractTemp
+
+    Ensure-Directory -Path (Split-Path -Parent $latestPath)
+    if (Test-Path $latestPath) {
+        Remove-Item -Path $latestPath -Recurse -Force
+    }
+
+    $source = Join-Path $extractTemp "cmdline-tools"
+    if (-not (Test-Path $source)) {
+        Fail "Android command-line tools archive extracted, but cmdline-tools folder was not found"
+    }
+
+    Move-Item -Path $source -Destination $latestPath
+    Remove-Item -Path $extractTemp -Recurse -Force
+
+    if (-not (Test-Path $sdkManager)) {
+        Fail "sdkmanager.bat was not found after command-line tools setup"
+    }
+
+    return $sdkManager
+}
+
+function Get-AndroidSdkCandidate {
+    if ($env:ANDROID_HOME -and (Test-Path $env:ANDROID_HOME)) {
+        return $env:ANDROID_HOME
+    }
+    if ($env:ANDROID_SDK_ROOT -and (Test-Path $env:ANDROID_SDK_ROOT)) {
+        return $env:ANDROID_SDK_ROOT
+    }
+    if (Test-Path "$env:LOCALAPPDATA\Android\Sdk") {
+        return "$env:LOCALAPPDATA\Android\Sdk"
+    }
+    if (Test-Path $AndroidSdkRoot) {
+        return $AndroidSdkRoot
+    }
+    return ""
+}
+
+function Test-AndroidSdkReady {
+    param([string]$SdkRoot)
+
+    if ($SdkRoot -eq "" -or -not (Test-Path $SdkRoot)) {
+        return $false
+    }
+
+    $platform = Join-Path $SdkRoot "platforms\android-$AndroidCompileSdk\android.jar"
+    $buildTools = Join-Path $SdkRoot "build-tools\$AndroidBuildTools\aapt2.exe"
+    $adb = Join-Path $SdkRoot "platform-tools\adb.exe"
+
+    return (Test-Path $platform) -and (Test-Path $buildTools) -and (Test-Path $adb)
+}
+
+function Invoke-SdkManager {
+    param(
+        [string]$SdkManager,
+        [string[]]$Packages
+    )
+
+    $env:ANDROID_HOME = $AndroidSdkRoot
+    $env:ANDROID_SDK_ROOT = $AndroidSdkRoot
+
+    $arguments = @("--sdk_root=$AndroidSdkRoot") + $Packages
+    Write-Step "$SdkManager $($arguments -join ' ')"
+
+    $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $processInfo.FileName = $SdkManager
+    foreach ($argument in $arguments) {
+        [void]$processInfo.ArgumentList.Add($argument)
+    }
+    $processInfo.RedirectStandardInput = $true
+    $processInfo.RedirectStandardOutput = $false
+    $processInfo.RedirectStandardError = $false
+    $processInfo.UseShellExecute = $false
+
+    $process = [System.Diagnostics.Process]::Start($processInfo)
+    for ($i = 0; $i -lt 80; $i++) {
+        $process.StandardInput.WriteLine("y")
+    }
+    $process.StandardInput.Close()
+    $process.WaitForExit()
+
+    if ($process.ExitCode -ne 0) {
+        Fail "sdkmanager failed with exit code $($process.ExitCode)"
+    }
+}
+
+function Write-LocalProperties {
+    $escapedSdkPath = $AndroidSdkRoot.Replace("\", "\\").Replace(":", "\:")
+    $content = "sdk.dir=$escapedSdkPath`r`n"
+    Set-Content -Path (Join-Path $ProjectRoot "local.properties") -Value $content -Encoding ASCII
+}
+
+function Configure-AndroidSdk {
+    $candidate = Get-AndroidSdkCandidate
+    if (Test-AndroidSdkReady -SdkRoot $candidate) {
+        $env:ANDROID_HOME = $candidate
+        $env:ANDROID_SDK_ROOT = $candidate
+        $env:PATH = (Join-Path $candidate "platform-tools") + [IO.Path]::PathSeparator + $env:PATH
+        Write-LocalProperties
+        Write-Ok "Using Android SDK: $candidate"
+        return
+    }
+
+    Write-Warn "Android SDK with platform android-$AndroidCompileSdk was not found. Downloading portable SDK into tools\.portable."
+    $sdkManager = Install-AndroidCommandLineTools
+    Invoke-SdkManager -SdkManager $sdkManager -Packages @(
+        "platform-tools",
+        "platforms;android-$AndroidCompileSdk",
+        "build-tools;$AndroidBuildTools"
+    )
+
+    if (-not (Test-AndroidSdkReady -SdkRoot $AndroidSdkRoot)) {
+        Fail "Android SDK setup finished, but required packages are still missing"
+    }
+
+    $env:ANDROID_HOME = $AndroidSdkRoot
+    $env:ANDROID_SDK_ROOT = $AndroidSdkRoot
+    $env:PATH = (Join-Path $AndroidSdkRoot "platform-tools") + [IO.Path]::PathSeparator + $env:PATH
+    Write-LocalProperties
+    Write-Ok "Using Android SDK: $AndroidSdkRoot"
+}
+
 function Resolve-Adb {
     if ($Adb -ne "") {
         if (Test-Path $Adb) { return (Resolve-Path $Adb).Path }
@@ -239,7 +385,8 @@ function Resolve-Adb {
         "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe",
         "$env:ProgramFiles\Android\Android Studio\platform-tools\adb.exe",
         "$env:ANDROID_HOME\platform-tools\adb.exe",
-        "$env:ANDROID_SDK_ROOT\platform-tools\adb.exe"
+        "$env:ANDROID_SDK_ROOT\platform-tools\adb.exe",
+        "$AndroidSdkRoot\platform-tools\adb.exe"
     )
 
     foreach ($candidate in $candidates) {
