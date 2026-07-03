@@ -19,7 +19,7 @@ tools\provision_kiosk_tablet.bat
 Скрипт сам делает:
 
 1. Находит подключённый планшет через ADB.
-2. Включает Wi-Fi и подключает планшет к `Neo_wifi`.
+2. Пробует включить Wi-Fi и подключить планшет к `Neo_wifi`.
 3. Проверяет Android System WebView.
 4. Если WebView старый, обновляет его из локального APK.
 5. Собирает APK.
@@ -204,11 +204,19 @@ tools\provision_kiosk_tablet.bat -Serial KZ5CAEJ85LX5DSZFRYW
 tools\provision_kiosk_tablet.bat -SingleDevice
 ```
 
-По умолчанию скрипт сначала подключает каждый планшет к Wi-Fi:
+По умолчанию скрипт подключает каждый планшет к Wi-Fi:
 
 ```text
 SSID: Neo_wifi
 ```
+
+На некоторых HK17 прошивках Android запрещает ADB-команду `cmd wifi connect-network` и пишет:
+
+```text
+Security exception: Uid 2000 does not have access to wifi commands
+```
+
+Это нормально. В такой ситуации актуальный скрипт не останавливает установку: он устанавливает kiosk app, включает Device Owner и затем отправляет команду Wi-Fi уже внутрь kiosk app.
 
 Если нужно указать другую сеть:
 

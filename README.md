@@ -77,7 +77,7 @@ tools\provision_kiosk_tablet.bat -PrepareTools
 
 On Windows, running without `-Serial` provisions all connected authorized tablets. Use `-Serial DEVICE_SERIAL` for one tablet only.
 
-The Windows script first connects each tablet to Wi-Fi `Neo_wifi` using the saved default password. To use another network:
+The Windows script connects each tablet to Wi-Fi `Neo_wifi` using the saved default password. If the tablet firmware blocks ADB Wi-Fi commands, the script installs the app, enables Device Owner, and then asks the kiosk app to configure Wi-Fi. To use another network:
 
 ```bat
 tools\provision_kiosk_tablet.bat -WifiSsid "OfficeWifi" -WifiPassword "password"

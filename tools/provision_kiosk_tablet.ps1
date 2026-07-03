@@ -20,10 +20,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ScriptVersion = "2026-07-03.9"
+$ScriptVersion = "2026-07-03.10"
 $AppPackage = "uz.neovex.iccu.kiosk"
 $MainActivity = "uz.neovex.iccu.kiosk/.MainActivity"
 $AdminReceiver = "uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
+$WifiProvisionReceiver = "uz.neovex.iccu.kiosk/.WifiProvisionReceiver"
+$WifiProvisionAction = "uz.neovex.iccu.kiosk.PROVISION_WIFI"
 $WebViewPackage = "com.google.android.webview"
 $ApkRelativePath = "app\build\outputs\apk\debug\app-debug.apk"
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -494,14 +496,43 @@ function Get-CurrentWifiSsid {
     return ""
 }
 
-function Ensure-WifiConnected {
+function Wait-ForWifiConnected {
+    param([int]$TimeoutSeconds)
+
+    $currentSsid = ""
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    do {
+        Start-Sleep -Seconds 3
+        $currentSsid = Get-CurrentWifiSsid
+        if ($currentSsid -eq $WifiSsid) {
+            Write-Ok "Wi-Fi connected: $WifiSsid"
+            return $true
+        }
+    } while ((Get-Date) -lt $deadline)
+
+    if ($currentSsid -ne "") {
+        Write-Warn "Tablet is connected to Wi-Fi '$currentSsid', expected '$WifiSsid'"
+    }
+
+    return $false
+}
+
+function Test-WifiSetupSkipped {
     if ($SkipWifiSetup) {
         Write-Warn "Skipping Wi-Fi setup because -SkipWifiSetup was used"
-        return
+        return $true
     }
 
     if ($WifiSsid -eq "") {
         Write-Warn "Skipping Wi-Fi setup because -WifiSsid is empty"
+        return $true
+    }
+
+    return $false
+}
+
+function Ensure-WifiConnected {
+    if (Test-WifiSetupSkipped) {
         return
     }
 
@@ -524,28 +555,61 @@ function Ensure-WifiConnected {
     }
 
     if ($connect.Code -ne 0) {
-        Write-Host ""
-        Write-Host "Wi-Fi setup failed. This Android build may not support:"
-        Write-Host "  adb shell cmd wifi connect-network SSID wpa2 PASSWORD"
-        Write-Host ""
-        Write-Host "Connect the tablet manually to Wi-Fi '$WifiSsid', or run with:"
-        Write-Host "  tools\provision_kiosk_tablet.bat -SkipWifiSetup"
-        Fail "Wi-Fi connect command failed"
-    }
-
-    $deadline = (Get-Date).AddSeconds($WifiConnectTimeoutSeconds)
-    do {
-        Start-Sleep -Seconds 3
-        $currentSsid = Get-CurrentWifiSsid
-        if ($currentSsid -eq $WifiSsid) {
-            Write-Ok "Wi-Fi connected: $WifiSsid"
+        if ($connect.Text -match "SecurityException|does not have access to wifi commands") {
+            Write-Warn "ADB shell cannot control Wi-Fi on this firmware. Will retry through the kiosk app after Device Owner is enabled."
             return
         }
-    } while ((Get-Date) -lt $deadline)
 
-    if ($currentSsid -ne "") {
-        Write-Warn "Tablet is connected to Wi-Fi '$currentSsid', expected '$WifiSsid'"
+        Write-Warn "ADB Wi-Fi connect command failed. Will retry through the kiosk app after Device Owner is enabled."
+        return
     }
+
+    if (Wait-ForWifiConnected -TimeoutSeconds $WifiConnectTimeoutSeconds) {
+        return
+    }
+
+    Write-Warn "ADB Wi-Fi command completed, but the tablet did not connect yet. Will retry through the kiosk app after Device Owner is enabled."
+}
+
+function Ensure-WifiConnectedWithDeviceOwnerApp {
+    if (Test-WifiSetupSkipped) {
+        return
+    }
+
+    $currentSsid = Get-CurrentWifiSsid
+    if ($currentSsid -eq $WifiSsid) {
+        Write-Ok "Wi-Fi already connected: $WifiSsid"
+        return
+    }
+
+    Write-Step "Connecting Wi-Fi through kiosk Device Owner app"
+    $broadcast = Capture-AdbDevice -Arguments @(
+        "shell",
+        "am",
+        "broadcast",
+        "-a",
+        $WifiProvisionAction,
+        "-n",
+        $WifiProvisionReceiver,
+        "--es",
+        "ssid",
+        $WifiSsid,
+        "--es",
+        "password",
+        $WifiPassword
+    )
+
+    if ($broadcast.Text -ne "") {
+        Write-Host $broadcast.Text
+    }
+    if ($broadcast.Code -ne 0) {
+        Fail "Could not send Wi-Fi provisioning broadcast to kiosk app"
+    }
+
+    if (Wait-ForWifiConnected -TimeoutSeconds $WifiConnectTimeoutSeconds) {
+        return
+    }
+
     Fail "Wi-Fi did not connect to $WifiSsid within $WifiConnectTimeoutSeconds seconds"
 }
 
@@ -1003,6 +1067,7 @@ function Provision-CurrentDevice {
     Build-Apk
     Install-Apk
     Ensure-DeviceOwner
+    Ensure-WifiConnectedWithDeviceOwnerApp
     Configure-Kiosk
     Launch-App
     Verify-Kiosk
