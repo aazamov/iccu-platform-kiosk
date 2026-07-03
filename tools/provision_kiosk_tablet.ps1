@@ -15,7 +15,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ScriptVersion = "2026-07-03.6"
+$ScriptVersion = "2026-07-03.7"
 $AppPackage = "uz.neovex.iccu.kiosk"
 $MainActivity = "uz.neovex.iccu.kiosk/.MainActivity"
 $AdminReceiver = "uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -537,12 +537,36 @@ function Build-Apk {
         Fail "gradlew.bat not found: $GradlewPath"
     }
 
+    $buildArguments = if ($NoTests) {
+        @("assembleDebug")
+    } else {
+        @("testDebugUnitTest", "assembleDebug")
+    }
+
     Push-Location $ProjectRoot
     try {
-        if ($NoTests) {
-            Run-Command -File $GradlewPath -Arguments @("assembleDebug")
-        } else {
-            Run-Command -File $GradlewPath -Arguments @("testDebugUnitTest", "assembleDebug")
+        Write-Step "$GradlewPath $($buildArguments -join ' ')"
+        $result = Invoke-NativeCapture -File $GradlewPath -Arguments $buildArguments
+        Write-Host $result.Text
+
+        if ($result.Code -ne 0) {
+            $isStaleDexFailure =
+                $result.Text -match "DexArchiveMergerException" -or
+                $result.Text -match "defined multiple times" -or
+                $result.Text -match "project_dex_archive"
+
+            if (-not $isStaleDexFailure) {
+                Fail "Command failed: $GradlewPath $($buildArguments -join ' ')"
+            }
+
+            Write-Warn "Gradle dex cache looks stale. Retrying once with clean build."
+            $cleanArguments = @("clean") + $buildArguments
+            Write-Step "$GradlewPath $($cleanArguments -join ' ')"
+            $cleanResult = Invoke-NativeCapture -File $GradlewPath -Arguments $cleanArguments
+            Write-Host $cleanResult.Text
+            if ($cleanResult.Code -ne 0) {
+                Fail "Clean build failed: $GradlewPath $($cleanArguments -join ' ')"
+            }
         }
     } finally {
         Pop-Location

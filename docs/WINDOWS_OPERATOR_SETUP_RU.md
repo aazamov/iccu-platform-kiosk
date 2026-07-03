@@ -321,6 +321,17 @@ adb devices
 - установлен USB-драйвер;
 - в Device Manager нет устройства с ошибкой.
 
+### `DexArchiveMergerException` или `defined multiple times`
+
+Это обычно stale/corrupted Gradle cache на Windows после обновления проекта. Актуальная версия `tools\provision_kiosk_tablet.bat` сама делает повторную сборку через `gradlew.bat clean ...`.
+
+Если ошибка осталась, вручную запустить:
+
+```powershell
+gradlew.bat clean
+tools\provision_kiosk_tablet.bat
+```
+
 Перезапустить ADB:
 
 ```powershell
