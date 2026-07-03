@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "/Users/ashrafkhan/.gradle/daemon/9.3.1/uz.neovex.iccu.kiosk.app-debug-4:/xml_device_admin_receiver.xml.flat",
+        "source": "/Users/ashrafkhan/.gradle/daemon/9.3.1/uz.neovex.iccu.kiosk.app-main-6:/xml/device_admin_receiver.xml"
+    },
+    {
+        "merged": "/Users/ashrafkhan/.gradle/daemon/9.3.1/uz.neovex.iccu.kiosk.app-debug-4:/drawable_ic_battery.xml.flat",
+        "source": "/Users/ashrafkhan/.gradle/daemon/9.3.1/uz.neovex.iccu.kiosk.app-main-6:/drawable/ic_battery.xml"
+    },
+    {
+        "merged": "/Users/ashrafkhan/.gradle/daemon/9.3.1/uz.neovex.iccu.kiosk.app-debug-4:/drawable_ic_launcher.xml.flat",
+        "source": "/Users/ashrafkhan/.gradle/daemon/9.3.1/uz.neovex.iccu.kiosk.app-main-6:/drawable/ic_launcher.xml"
+    },
+    {
+        "merged": "uz.neovex.iccu.kiosk.app-debug-4:/drawable_ic_brightness.xml.flat",
+        "source": "uz.neovex.iccu.kiosk.app-main-6:/drawable/ic_brightness.xml"
+    },
+    {
+        "merged": "/Users/ashrafkhan/.gradle/daemon/9.3.1/uz.neovex.iccu.kiosk.app-debug-4:/drawable_ic_wifi.xml.flat",
+        "source": "/Users/ashrafkhan/.gradle/daemon/9.3.1/uz.neovex.iccu.kiosk.app-main-6:/drawable/ic_wifi.xml"
+    }
+]

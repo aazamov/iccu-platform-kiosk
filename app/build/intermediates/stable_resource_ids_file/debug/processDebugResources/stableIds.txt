@@ -1,0 +1,8 @@
+uz.neovex.iccu.kiosk:xml/device_admin_receiver = 0x7f040000
+uz.neovex.iccu.kiosk:style/AppTheme = 0x7f030000
+uz.neovex.iccu.kiosk:string/device_admin_description = 0x7f020001
+uz.neovex.iccu.kiosk:drawable/ic_wifi = 0x7f010003
+uz.neovex.iccu.kiosk:drawable/ic_launcher = 0x7f010002
+uz.neovex.iccu.kiosk:string/app_name = 0x7f020000
+uz.neovex.iccu.kiosk:drawable/ic_brightness = 0x7f010001
+uz.neovex.iccu.kiosk:drawable/ic_battery = 0x7f010000

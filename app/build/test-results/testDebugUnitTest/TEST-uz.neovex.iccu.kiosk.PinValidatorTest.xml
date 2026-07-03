@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="uz.neovex.iccu.kiosk.PinValidatorTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-07-02T14:53:23.710Z" hostname="MacBook-Pro-Ashrafkhan.local" time="0.002">
+  <properties/>
+  <testcase name="rejectsOtherValues" classname="uz.neovex.iccu.kiosk.PinValidatorTest" time="0.0"/>
+  <testcase name="acceptsExitPin" classname="uz.neovex.iccu.kiosk.PinValidatorTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

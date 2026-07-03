@@ -1,0 +1,10 @@
+R_DEF: Internal format may change without notice
+local
+drawable ic_battery
+drawable ic_brightness
+drawable ic_launcher
+drawable ic_wifi
+string app_name
+string device_admin_description
+style AppTheme
+xml device_admin_receiver

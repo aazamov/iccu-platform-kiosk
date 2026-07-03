@@ -1,0 +1,125 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="uz.neovex.iccu.kiosk"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="23"
+9        android:targetSdkVersion="36" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:4:5-67
+11-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:4:22-64
+12    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+12-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:5:5-79
+12-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:5:22-76
+13    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+13-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:6:5-76
+13-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:6:22-73
+14    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+14-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:7:5-81
+14-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:7:22-78
+15
+16    <application
+16-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:9:5-58:19
+17        android:allowBackup="false"
+17-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:10:9-36
+18        android:debuggable="true"
+19        android:extractNativeLibs="false"
+20        android:fullBackupContent="false"
+20-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:11:9-42
+21        android:icon="@drawable/ic_launcher"
+21-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:12:9-45
+22        android:label="ICCU Forum"
+22-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:13:9-35
+23        android:resizeableActivity="false"
+23-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:14:9-43
+24        android:supportsRtl="true"
+24-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:15:9-35
+25        android:theme="@style/AppTheme" >
+25-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:16:9-40
+26        <activity
+26-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:18:9-31:20
+27            android:name="uz.neovex.iccu.kiosk.MainActivity"
+27-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:19:13-41
+28            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode"
+28-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:20:13-90
+29            android:exported="true"
+29-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:21:13-36
+30            android:launchMode="singleTask"
+30-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:22:13-44
+31            android:lockTaskMode="if_whitelisted"
+31-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:23:13-50
+32            android:screenOrientation="landscape" >
+32-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:24:13-50
+33            <intent-filter>
+33-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:25:13-30:29
+34                <action android:name="android.intent.action.MAIN" />
+34-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:26:17-69
+34-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:26:25-66
+35
+36                <category android:name="android.intent.category.LAUNCHER" />
+36-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:27:17-77
+36-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:27:27-74
+37                <category android:name="android.intent.category.HOME" />
+37-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:28:17-73
+37-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:28:27-70
+38                <category android:name="android.intent.category.DEFAULT" />
+38-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:29:17-76
+38-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:29:27-73
+39            </intent-filter>
+40        </activity>
+41
+42        <receiver
+42-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:33:9-45:20
+43            android:name="uz.neovex.iccu.kiosk.KioskDeviceAdminReceiver"
+43-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:34:13-53
+44            android:description="@string/device_admin_description"
+44-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:35:13-67
+45            android:exported="true"
+45-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:36:13-36
+46            android:label="@string/app_name"
+46-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:37:13-45
+47            android:permission="android.permission.BIND_DEVICE_ADMIN" >
+47-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:38:13-70
+48            <meta-data
+48-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:39:13-41:65
+49                android:name="android.app.device_admin"
+49-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:40:17-56
+50                android:resource="@xml/device_admin_receiver" />
+50-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:41:17-62
+51
+52            <intent-filter>
+52-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:42:13-44:29
+53                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+53-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:43:17-82
+53-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:43:25-79
+54            </intent-filter>
+55        </receiver>
+56        <receiver
+56-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:47:9-57:20
+57            android:name="uz.neovex.iccu.kiosk.BootReceiver"
+57-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:48:13-41
+58            android:directBootAware="true"
+58-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:49:13-43
+59            android:enabled="true"
+59-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:50:13-35
+60            android:exported="true" >
+60-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:51:13-36
+61            <intent-filter>
+61-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:52:13-56:29
+62                <action android:name="android.intent.action.BOOT_COMPLETED" />
+62-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:53:17-79
+62-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:53:25-76
+63                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+63-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:54:17-86
+63-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:54:25-83
+64                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+64-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:55:17-84
+64-->/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/AndroidManifest.xml:55:25-81
+65            </intent-filter>
+66        </receiver>
+67    </application>
+68
+69</manifest>

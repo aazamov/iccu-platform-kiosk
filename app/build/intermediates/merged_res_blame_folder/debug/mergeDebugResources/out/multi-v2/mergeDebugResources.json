@@ -1,0 +1,38 @@
+{
+    "logs": [
+        {
+            "outputFile": "uz.neovex.iccu.kiosk.app-debug-4:/values_values.arsc.flat",
+            "map": [
+                {
+                    "source": "/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/res/values/strings.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,103",
+                        "endColumns": "47,105",
+                        "endOffsets": "98,204"
+                    }
+                },
+                {
+                    "source": "/Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/res/values/styles.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "9",
+                        "endColumns": "12",
+                        "endOffsets": "496"
+                    },
+                    "to": {
+                        "startLines": "4",
+                        "startColumns": "4",
+                        "startOffsets": "209",
+                        "endLines": "11",
+                        "endColumns": "12",
+                        "endOffsets": "650"
+                    }
+                }
+            ]
+        }
+    ]
+}

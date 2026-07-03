@@ -1,0 +1,8 @@
+uz.neovex.iccu.kiosk.app-pngs-0 /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/build/generated/res/pngs/debug
+uz.neovex.iccu.kiosk.app-resValues-1 /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/build/generated/res/resValues/debug
+uz.neovex.iccu.kiosk.app-updated_navigation_xml-2 /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/build/generated/updated_navigation_xml/debug
+uz.neovex.iccu.kiosk.app-packageDebugResources-3 /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+uz.neovex.iccu.kiosk.app-packageDebugResources-4 /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+uz.neovex.iccu.kiosk.app-debug-5 /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/build/intermediates/merged_res/debug/mergeDebugResources
+uz.neovex.iccu.kiosk.app-debug-6 /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/debug/res
+uz.neovex.iccu.kiosk.app-main-7 /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk/app/src/main/res
