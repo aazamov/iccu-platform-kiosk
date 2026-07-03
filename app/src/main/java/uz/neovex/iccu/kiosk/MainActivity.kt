@@ -59,6 +59,7 @@ class MainActivity : Activity() {
     private val brightnessHandler = Handler(Looper.getMainLooper())
     private var exitDialogPending = false
     private var reloadActionPending = false
+    private var blankPageReloadCount = 0
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             updateBattery(intent)
@@ -168,10 +169,8 @@ class MainActivity : Activity() {
 
             override fun onPageFinished(view: WebView, url: String) {
                 disablePageZoomAndSelection(view)
-                loadingView.visibility = View.GONE
-                offlineView.visibility = View.GONE
                 webView.visibility = View.VISIBLE
-                scheduleBlankPageRecovery()
+                verifyPageHasContentOrReload()
             }
 
             override fun onReceivedHttpError(
@@ -609,6 +608,7 @@ class MainActivity : Activity() {
 
     private fun reloadWebsite() {
         enterFullscreen()
+        blankPageReloadCount = 0
         webView.clearCache(true)
         webView.clearHistory()
         webView.clearFormData()
@@ -658,6 +658,7 @@ class MainActivity : Activity() {
     }
 
     private fun loadKioskPage() {
+        blankPageReloadCount = 0
         loadingView.text = "Loading forum..."
         loadingView.visibility = View.VISIBLE
         offlineView.visibility = View.GONE
@@ -676,7 +677,7 @@ class MainActivity : Activity() {
             }, 3_000L)
             webView.postDelayed({ webView.reload() }, 8_000L)
             webView.postDelayed({ webView.reload() }, 15_000L)
-            webView.postDelayed({ scheduleBlankPageRecovery() }, 20_000L)
+            webView.postDelayed({ verifyPageHasContentOrReload() }, 20_000L)
         } else {
             showOfflineMessage("Connection unavailable")
         }
@@ -690,23 +691,34 @@ class MainActivity : Activity() {
         offlineView.postDelayed({ loadKioskPage() }, RETRY_DELAY_MS)
     }
 
-    private fun scheduleBlankPageRecovery() {
+    private fun verifyPageHasContentOrReload() {
         webView.postDelayed({
             webView.evaluateJavascript(
                 """
                 (function() {
-                  var text = (document.body && document.body.innerText || '').trim();
-                  var area = document.body ? (document.body.scrollWidth * document.body.scrollHeight) : 0;
-                  return JSON.stringify({ textLength: text.length, area: area, readyState: document.readyState });
+                  return (document.body && document.body.innerText || '').trim().length;
                 })();
                 """.trimIndent(),
             ) { rawResult ->
-                val looksBlank = rawResult.contains("\"textLength\":0") || rawResult == "null"
+                val textLength = rawResult.trim('"').toIntOrNull() ?: 0
+                val looksBlank = textLength == 0
                 if (looksBlank && hasNetwork()) {
+                    blankPageReloadCount += 1
                     loadingView.text = "Reloading forum..."
                     loadingView.visibility = View.VISIBLE
                     offlineView.visibility = View.GONE
-                    webView.reload()
+                    if (blankPageReloadCount <= MAX_BLANK_PAGE_RELOADS) {
+                        webView.reload()
+                    } else {
+                        webView.clearCache(true)
+                        webView.loadUrl(KIOSK_URL)
+                        blankPageReloadCount = 0
+                    }
+                } else {
+                    blankPageReloadCount = 0
+                    loadingView.visibility = View.GONE
+                    offlineView.visibility = View.GONE
+                    webView.visibility = View.VISIBLE
                 }
             }
         }, BLANK_PAGE_CHECK_DELAY_MS)
@@ -753,7 +765,8 @@ class MainActivity : Activity() {
     companion object {
         private const val KIOSK_URL = "https://forum.iccu.uz/"
         private const val RETRY_DELAY_MS = 5_000L
-        private const val BLANK_PAGE_CHECK_DELAY_MS = 4_000L
+        private const val BLANK_PAGE_CHECK_DELAY_MS = 1_200L
+        private const val MAX_BLANK_PAGE_RELOADS = 3
         private const val EXIT_PRESS_DURATION_MS = 5_000L
         private const val CONTROL_PRESS_DURATION_MS = 3_000L
         private const val BRIGHTNESS_PANEL_HIDE_DELAY_MS = 6_000L
