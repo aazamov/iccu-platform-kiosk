@@ -99,6 +99,14 @@ The Windows script connects each tablet to Wi-Fi `Neo_wifi` using the saved defa
 tools\provision_kiosk_tablet.bat -WifiSsid "OfficeWifi" -WifiPassword "password"
 ```
 
+Before provisioning a new app version on macOS or Windows, update the project first:
+
+```sh
+git pull
+```
+
+Both provisioning scripts build `app/build/outputs/apk/debug/app-debug.apk` from the current local source and print `Source commit` before installing.
+
 To skip Wi-Fi setup:
 
 ```bat

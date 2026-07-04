@@ -20,7 +20,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ScriptVersion = "2026-07-03.10"
+$ScriptVersion = "2026-07-04.2-win"
 $AppPackage = "uz.neovex.iccu.kiosk"
 $MainActivity = "uz.neovex.iccu.kiosk/.MainActivity"
 $AdminReceiver = "uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -54,6 +54,42 @@ function Write-Ok {
 function Write-Warn {
     param([string]$Message)
     Write-Host "WARN: $Message" -ForegroundColor Yellow
+}
+
+function Invoke-GitText {
+    param([string[]]$Arguments)
+
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($null -eq $git) {
+        return ""
+    }
+
+    Push-Location $ProjectRoot
+    try {
+        $output = & $git.Source @Arguments 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return ""
+        }
+        return (($output | Out-String).Trim())
+    } catch {
+        return ""
+    } finally {
+        Pop-Location
+    }
+}
+
+function Write-SourceInfo {
+    $revision = Invoke-GitText -Arguments @("rev-parse", "--short", "HEAD")
+    if ($revision -eq "") {
+        Write-Host "Source commit: unknown"
+    } else {
+        Write-Host "Source commit: $revision"
+    }
+
+    $dirty = Invoke-GitText -Arguments @("status", "--porcelain")
+    if ($dirty -ne "") {
+        Write-Warn "Project has uncommitted local changes; the APK will be built from this local working tree."
+    }
 }
 
 function Fail {
@@ -1114,6 +1150,7 @@ function Invoke-SingleDeviceProvisioning {
 
 $script:Serial = $Serial
 Write-Host "ICCU provisioning script version: $ScriptVersion" -ForegroundColor White
+Write-SourceInfo
 Configure-Java
 Configure-AndroidSdk
 

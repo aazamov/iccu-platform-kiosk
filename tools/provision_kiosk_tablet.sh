@@ -2,7 +2,7 @@
 
 set -uo pipefail
 
-SCRIPT_VERSION="2026-07-04.1-mac"
+SCRIPT_VERSION="2026-07-04.2-mac"
 APP_PACKAGE="uz.neovex.iccu.kiosk"
 MAIN_ACTIVITY="uz.neovex.iccu.kiosk/.MainActivity"
 ADMIN_RECEIVER="uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -88,6 +88,26 @@ warn() {
 fail() {
   printf '%s\n' "${RED}ERROR:${RESET} $*" >&2
   exit 1
+}
+
+git_text() {
+  command -v git >/dev/null 2>&1 || return 0
+  (cd "$PROJECT_ROOT" && git "$@" 2>/dev/null) || true
+}
+
+print_source_info() {
+  local revision dirty
+  revision="$(git_text rev-parse --short HEAD | head -1)"
+  if [[ -n "$revision" ]]; then
+    printf '%s\n' "Source commit: $revision"
+  else
+    printf '%s\n' "Source commit: unknown"
+  fi
+
+  dirty="$(git_text status --porcelain)"
+  if [[ -n "$dirty" ]]; then
+    warn "Project has uncommitted local changes; the APK will be built from this local working tree."
+  fi
 }
 
 run() {
@@ -703,6 +723,7 @@ main() {
   printf '%s\n' "Project: $PROJECT_ROOT"
   printf '%s\n' "Package: $APP_PACKAGE"
   printf '%s\n' "ADB: $ADB_BIN"
+  print_source_info
   if [[ "$SKIP_WEBVIEW_UPDATE" -eq 1 ]]; then
     printf '%s\n' "WebView update: skipped"
   else

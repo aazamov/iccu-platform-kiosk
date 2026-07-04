@@ -41,6 +41,14 @@ cd /Users/ashrafkhan/Desktop/My/native-apps/iccu-forum-kiosk
 
 ## 3. Одна команда для установки
 
+Перед установкой новой версии приложения нужно обновить проект на компьютере оператора:
+
+```bash
+git pull
+```
+
+Скрипт сам собирает свежий APK из текущего проекта и в начале показывает `Source commit`.
+
 Открыть Terminal:
 
 ```bash
@@ -66,7 +74,7 @@ adb devices
 Скрипт автоматически:
 
 1. Находит подключённый планшет.
-2. Собирает APK.
+2. Собирает свежий APK из текущего source commit.
 3. Устанавливает APK.
 4. Включает Device Owner.
 5. Назначает приложение как Home screen.
@@ -107,4 +115,3 @@ ADB=/path/to/adb ./tools/provision_kiosk_tablet.sh
 ```bash
 ./tools/provision_kiosk_tablet.sh
 ```
-
