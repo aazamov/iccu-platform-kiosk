@@ -18,7 +18,6 @@ import android.os.BatteryManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.text.InputType
 import android.view.ActionMode
 import android.view.ContextMenu
 import android.view.Gravity
@@ -59,7 +58,8 @@ class MainActivity : Activity() {
     private lateinit var wifiStatusText: TextView
     private lateinit var wifiController: KioskWifiController
     private lateinit var wifiNetworksContainer: LinearLayout
-    private lateinit var wifiPasswordInput: EditText
+    private lateinit var wifiPasswordDisplay: TextView
+    private lateinit var wifiKeyboardContainer: LinearLayout
     private lateinit var wifiMessageText: TextView
     private lateinit var wifiPowerButton: TextView
     private lateinit var brightnessPanel: LinearLayout
@@ -76,6 +76,7 @@ class MainActivity : Activity() {
     private var blankPageReloadCount = 0
     private var lastConsoleMessage = ""
     private var selectedWifiNetwork: WifiNetworkInfo? = null
+    private val wifiPasswordState = WifiPasswordInputState()
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             updateBattery(intent)
@@ -473,17 +474,18 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
         }
 
-        wifiPasswordInput = EditText(this).apply {
-            hint = "Password"
+        wifiPasswordDisplay = TextView(this).apply {
+            text = "Password"
             textSize = 12f
-            inputType = InputType.TYPE_CLASS_TEXT or
-                InputType.TYPE_TEXT_VARIATION_PASSWORD or
-                InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-            setSingleLine(true)
+            gravity = Gravity.CENTER_VERTICAL
             setTextColor(Color.WHITE)
-            setHintTextColor(INACTIVE_CONTROL_COLOR)
-            setPadding(dp(6), dp(3), dp(6), dp(3))
+            setPadding(dp(8), dp(6), dp(8), dp(6))
             setBackgroundColor(Color.argb(130, 2, 18, 12))
+            visibility = View.GONE
+        }
+
+        wifiKeyboardContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             visibility = View.GONE
         }
 
@@ -531,7 +533,14 @@ class MainActivity : Activity() {
                 ),
             )
             addView(
-                wifiPasswordInput,
+                wifiPasswordDisplay,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+            addView(
+                wifiKeyboardContainer,
                 LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -823,13 +832,13 @@ class MainActivity : Activity() {
             includeFontPadding = false
             setPadding(dp(6), dp(5), dp(6), dp(5))
             setOnClickListener {
-                wifiPasswordInput.text.clear()
+                wifiPasswordState.clear()
+                updateWifiPasswordDisplay()
                 selectedWifiNetwork = network
-                wifiPasswordInput.visibility = if (network.security == WifiSecurity.WPA_PSK) {
-                    View.VISIBLE
-                } else {
-                    View.GONE
-                }
+                val needsPassword = network.security == WifiSecurity.WPA_PSK
+                wifiPasswordDisplay.visibility = if (needsPassword) View.VISIBLE else View.GONE
+                wifiKeyboardContainer.visibility = if (needsPassword) View.VISIBLE else View.GONE
+                if (needsPassword) renderWifiKeyboard()
                 wifiMessageText.text = if (network.security == WifiSecurity.UNSUPPORTED) {
                     WifiOperationMessages.unsupportedSecurity().message
                 } else {
@@ -837,6 +846,73 @@ class MainActivity : Activity() {
                 }
             }
         }
+
+    private fun renderWifiKeyboard() {
+        if (!::wifiKeyboardContainer.isInitialized) return
+        wifiKeyboardContainer.removeAllViews()
+        val rows = if (wifiPasswordState.mode == WifiKeyboardMode.LETTERS) {
+            listOf(
+                listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
+                listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
+                listOf("Shift", "z", "x", "c", "v", "b", "n", "m", "Backspace"),
+                listOf("123", "Clear", "Done"),
+            )
+        } else {
+            listOf(
+                listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
+                listOf("!", "@", "#", "$", "%", "&", "*", "_", "-", "."),
+                listOf("ABC", "/", ":", ";", "?", "+", "=", "Backspace"),
+                listOf("Clear", "Done"),
+            )
+        }
+        rows.forEach { labels ->
+            wifiKeyboardContainer.addView(createWifiKeyboardRow(labels))
+        }
+    }
+
+    private fun createWifiKeyboardRow(labels: List<String>): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            labels.forEach { label ->
+                addView(
+                    createWifiKeyboardKey(label),
+                    LinearLayout.LayoutParams(0, dp(28), 1f).apply {
+                        setMargins(dp(1), dp(1), dp(1), dp(1))
+                    },
+                )
+            }
+        }
+
+    private fun createWifiKeyboardKey(label: String): TextView =
+        TextView(this).apply {
+            text = if (label == "Shift" && wifiPasswordState.shifted) "SHIFT" else label
+            textSize = if (label.length > 3) 9f else 11f
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            setTextColor(ACTIVE_CONTROL_COLOR)
+            setBackgroundColor(Color.argb(180, 10, 48, 30))
+            setOnClickListener { handleWifiKeyboardKey(label) }
+        }
+
+    private fun handleWifiKeyboardKey(label: String) {
+        when (label) {
+            "Shift" -> wifiPasswordState.toggleShift()
+            "123", "ABC" -> wifiPasswordState.toggleMode()
+            "Backspace" -> wifiPasswordState.backspace()
+            "Clear" -> wifiPasswordState.clear()
+            "Done" -> wifiKeyboardContainer.visibility = View.GONE
+            else -> wifiPasswordState.appendKey(label)
+        }
+        updateWifiPasswordDisplay()
+        renderWifiKeyboard()
+        enforceKioskAfterWifiAction()
+    }
+
+    private fun updateWifiPasswordDisplay() {
+        if (!::wifiPasswordDisplay.isInitialized) return
+        wifiPasswordDisplay.text = wifiPasswordState.maskedPassword().ifBlank { "Password" }
+    }
 
     private fun toggleWifiPower() {
         enforceKioskAfterWifiAction()
@@ -852,12 +928,13 @@ class MainActivity : Activity() {
             wifiMessageText.text = "Select Wi-Fi network"
             return
         }
-        val password = wifiPasswordInput.text.toString()
-        wifiPasswordInput.text.clear()
+        val password = wifiPasswordState.password
+        wifiPasswordState.clear()
         val result = wifiController.connect(network, password)
         showWifiResult(result)
         selectedWifiNetwork = null
-        wifiPasswordInput.visibility = View.GONE
+        wifiPasswordDisplay.visibility = View.GONE
+        wifiKeyboardContainer.visibility = View.GONE
         refreshWifiPanel()
         enforceKioskAfterWifiAction()
     }
@@ -877,9 +954,13 @@ class MainActivity : Activity() {
 
     private fun clearWifiSelection() {
         selectedWifiNetwork = null
-        if (::wifiPasswordInput.isInitialized) {
-            wifiPasswordInput.text.clear()
-            wifiPasswordInput.visibility = View.GONE
+        wifiPasswordState.clear()
+        if (::wifiPasswordDisplay.isInitialized) {
+            updateWifiPasswordDisplay()
+            wifiPasswordDisplay.visibility = View.GONE
+        }
+        if (::wifiKeyboardContainer.isInitialized) {
+            wifiKeyboardContainer.visibility = View.GONE
         }
     }
 
