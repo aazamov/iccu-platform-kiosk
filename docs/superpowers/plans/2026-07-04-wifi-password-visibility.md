@@ -194,3 +194,87 @@ Expected:
 git add app/src/main/java/uz/neovex/iccu/kiosk/MainActivity.kt
 git commit -m "Add Wi-Fi password show hide control"
 ```
+
+---
+
+### Task 3: Compact Password Row Polish
+
+**Files:**
+- Modify: `app/src/main/java/uz/neovex/iccu/kiosk/MainActivity.kt`
+
+**Interfaces:**
+- Consumes: existing `wifiPasswordRow`, `wifiPasswordDisplay`, `wifiPasswordVisibilityButton`, `updateWifiPasswordDisplay()`
+- Produces: a quieter compact password input row using `View`/`Hide`
+
+- [ ] **Step 1: Confirm existing behavior tests**
+
+Run: `./gradlew testDebugUnitTest --tests uz.neovex.iccu.kiosk.WifiPasswordInputStateTest`
+
+Expected: PASS. The state behavior is already covered; this task changes visual treatment only.
+
+- [ ] **Step 2: Update compact row styling**
+
+In `MainActivity`, update the password display and visibility button:
+
+```kotlin
+wifiPasswordDisplay = TextView(this).apply {
+    text = "Password"
+    textSize = 11f
+    gravity = Gravity.CENTER_VERTICAL
+    includeFontPadding = false
+    maxLines = 1
+    setTextColor(Color.WHITE)
+    setPadding(dp(7), 0, dp(7), 0)
+    setBackgroundColor(Color.argb(120, 2, 18, 12))
+}
+
+wifiPasswordVisibilityButton = TextView(this).apply {
+    text = "View"
+    textSize = 10f
+    gravity = Gravity.CENTER
+    includeFontPadding = false
+    maxLines = 1
+    setTextColor(ACTIVE_CONTROL_COLOR)
+    setPadding(dp(4), 0, dp(4), 0)
+    setBackgroundColor(Color.argb(120, 2, 18, 12))
+}
+```
+
+Set row children to fixed height:
+
+```kotlin
+LinearLayout.LayoutParams(0, dp(28), 1f)
+LinearLayout.LayoutParams(dp(48), dp(28))
+```
+
+- [ ] **Step 3: Rename toggle copy**
+
+Update display refresh:
+
+```kotlin
+wifiPasswordVisibilityButton.text = if (wifiPasswordState.passwordVisible) "Hide" else "View"
+```
+
+- [ ] **Step 4: Verify build and tablet appearance**
+
+Run: `./gradlew testDebugUnitTest assembleDebug`
+
+Install and visually verify:
+
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell monkey -p uz.neovex.iccu.kiosk 1
+```
+
+Expected:
+- Password row is one compact visual strip.
+- `View`/`Hide` text fits in its button.
+- Keyboard remains visible and does not overlap.
+- Kiosk remains locked.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add docs/superpowers/plans/2026-07-04-wifi-password-visibility.md app/src/main/java/uz/neovex/iccu/kiosk/MainActivity.kt
+git commit -m "Polish Wi-Fi password visibility row"
+```
