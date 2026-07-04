@@ -2,7 +2,7 @@
 
 set -uo pipefail
 
-SCRIPT_VERSION="2026-07-04.8-mac"
+SCRIPT_VERSION="2026-07-04.10-mac"
 APP_PACKAGE="uz.neovex.iccu.kiosk"
 MAIN_ACTIVITY="uz.neovex.iccu.kiosk/.MainActivity"
 ADMIN_RECEIVER="uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -146,7 +146,7 @@ capture_adb_device() {
 device_shell_is_responsive() {
   local serial="$1"
   local output
-  output="$(run_with_timeout 8 "$ADB_BIN" -s "$serial" shell echo ok 2>&1)" || return 1
+  output="$(run_with_timeout 8 "$ADB_BIN" -s "$serial" shell echo ok </dev/null 2>&1)" || return 1
   [[ "$(printf '%s\n' "$output" | tail -1 | tr -d '\r')" == "ok" ]]
 }
 
@@ -868,16 +868,51 @@ main() {
 
   local results=()
   local target code
-  for target in "${TARGETS[@]}"; do
-    printf '\n%s\n' "================ TABLET $target ================"
-    (
-      SERIAL="$target"
-      printf '%s\n' "Serial: $SERIAL"
-      provision_current_device
-    )
-    code=$?
-    results+=("$target:$code")
-  done
+  if [[ ${#TARGETS[@]} -gt 1 ]]; then
+    log "Provisioning ${#TARGETS[@]} tablets in parallel"
+    local log_root
+    log_root="$(mktemp -d "${TMPDIR:-/tmp}/iccu-kiosk-provision.XXXXXX")"
+    local pids=()
+    local log_files=()
+
+    for target in "${TARGETS[@]}"; do
+      local log_file="$log_root/$target.log"
+      local pid
+      log_files+=("$log_file")
+      (
+        SERIAL="$target"
+        printf '%s\n' "Serial: $SERIAL"
+        provision_current_device
+      ) >"$log_file" 2>&1 &
+      pid="$!"
+      pids+=("$pid")
+      printf '%s\n' "Started tablet $target (pid $pid)"
+    done
+
+    local index
+    for index in "${!TARGETS[@]}"; do
+      target="${TARGETS[$index]}"
+      if wait "${pids[$index]}"; then
+        code=0
+      else
+        code=$?
+      fi
+      printf '\n%s\n' "================ TABLET $target ================"
+      cat "${log_files[$index]}"
+      results+=("$target:$code")
+    done
+  else
+    for target in "${TARGETS[@]}"; do
+      printf '\n%s\n' "================ TABLET $target ================"
+      (
+        SERIAL="$target"
+        printf '%s\n' "Serial: $SERIAL"
+        provision_current_device
+      )
+      code=$?
+      results+=("$target:$code")
+    done
+  fi
 
   printf '\n%s\n' "${BOLD}Provisioning summary:${RESET}"
   local failed_count=0
