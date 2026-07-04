@@ -34,5 +34,7 @@ class WifiNetworkInfoTest {
         assertEquals(WifiSecurity.UNSUPPORTED, WifiSecurityParser.parse("[WEP][ESS]"))
         assertEquals(WifiSecurity.UNSUPPORTED, WifiSecurityParser.parse("[EAP/SHA1][ESS]"))
         assertEquals(WifiSecurity.UNSUPPORTED, WifiSecurityParser.parse("[SAE][ESS]"))
+        assertEquals(WifiSecurity.UNSUPPORTED, WifiSecurityParser.parse("[WAPI-PSK][ESS]"))
+        assertEquals(WifiSecurity.UNSUPPORTED, WifiSecurityParser.parse("[OWE][ESS]"))
     }
 }

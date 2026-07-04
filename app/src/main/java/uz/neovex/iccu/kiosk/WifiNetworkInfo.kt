@@ -18,11 +18,10 @@ object WifiSecurityParser {
     fun parse(capabilities: String): WifiSecurity {
         val normalized = capabilities.uppercase()
         val hasPsk = normalized.contains("WPA-PSK") ||
-            normalized.contains("WPA2-PSK") ||
-            normalized.contains("PSK")
+            normalized.contains("WPA2-PSK")
         if (hasPsk) return WifiSecurity.WPA_PSK
 
-        val hasUnsupportedSecurity = listOf("WEP", "SAE", "EAP").any { token ->
+        val hasUnsupportedSecurity = listOf("WEP", "SAE", "EAP", "PSK", "OWE", "WAPI").any { token ->
             normalized.contains(token)
         }
         return if (hasUnsupportedSecurity) WifiSecurity.UNSUPPORTED else WifiSecurity.OPEN
