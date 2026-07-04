@@ -66,6 +66,15 @@
                 <action android:name="uz.neovex.iccu.kiosk.PROVISION_WIFI" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".DeviceOwnerControlReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="uz.neovex.iccu.kiosk.CLEAR_DEVICE_OWNER" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

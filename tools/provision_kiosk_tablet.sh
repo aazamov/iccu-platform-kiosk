@@ -2,12 +2,14 @@
 
 set -uo pipefail
 
-SCRIPT_VERSION="2026-07-04.6-mac"
+SCRIPT_VERSION="2026-07-04.8-mac"
 APP_PACKAGE="uz.neovex.iccu.kiosk"
 MAIN_ACTIVITY="uz.neovex.iccu.kiosk/.MainActivity"
 ADMIN_RECEIVER="uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
 WIFI_PROVISION_RECEIVER="uz.neovex.iccu.kiosk/.WifiProvisionReceiver"
 WIFI_PROVISION_ACTION="uz.neovex.iccu.kiosk.PROVISION_WIFI"
+DEVICE_OWNER_CONTROL_RECEIVER="uz.neovex.iccu.kiosk/.DeviceOwnerControlReceiver"
+DEVICE_OWNER_CLEAR_ACTION="uz.neovex.iccu.kiosk.CLEAR_DEVICE_OWNER"
 WEBVIEW_PACKAGE="com.google.android.webview"
 APK_RELATIVE_PATH="app/build/outputs/apk/debug/app-debug.apk"
 
@@ -599,9 +601,33 @@ install_webview_apk() {
 }
 
 remove_existing_kiosk_package_for_fresh_install() {
-  warn "Installed kiosk package has a different signature. Removing old package before fresh install."
+  local required="${1:-0}"
+
+  if ! capture_adb_device shell pm path "$APP_PACKAGE" | grep -q "package:"; then
+    return 0
+  fi
+
+  warn "Removing previously installed kiosk package before fresh install."
 
   local output
+  if our_app_is_device_owner; then
+    log "Requesting kiosk app to clear Device Owner"
+    if output="$(capture_adb_device shell am broadcast -a "$DEVICE_OWNER_CLEAR_ACTION" -n "$DEVICE_OWNER_CONTROL_RECEIVER")"; then
+      printf '%s\n' "$output"
+      local deadline=$((SECONDS + 15))
+      while [[ $SECONDS -lt $deadline ]]; do
+        if ! our_app_is_device_owner; then
+          ok "Device Owner removed by kiosk app"
+          break
+        fi
+        sleep 1
+      done
+    else
+      printf '%s\n' "$output" >&2
+      warn "Installed kiosk app may be too old to clear Device Owner itself."
+    fi
+  fi
+
   if output="$(capture_adb_device shell dpm remove-active-admin "$ADMIN_RECEIVER")"; then
     printf '%s\n' "$output"
   else
@@ -616,6 +642,15 @@ remove_existing_kiosk_package_for_fresh_install() {
   fi
 
   printf '%s\n' "$output" >&2
+  if printf '%s' "$output" | grep -q "DELETE_FAILED_DEVICE_POLICY_MANAGER"; then
+    if [[ "$required" -eq 1 ]]; then
+      fail "Could not uninstall old kiosk package because it is Device Owner. Factory reset this tablet, do not add accounts, enable USB debugging, then run provisioning again."
+    fi
+
+    warn "Old kiosk package is Device Owner, so Android blocked uninstall. Will try normal APK update with the existing package."
+    return 1
+  fi
+
   fail "Could not uninstall old kiosk package. If it is Device Owner and cannot be removed, factory reset this tablet and run provisioning again."
 }
 
@@ -673,6 +708,8 @@ ensure_webview_updated() {
 }
 
 install_apk() {
+  remove_existing_kiosk_package_for_fresh_install || true
+
   log "Installing APK"
   local output
   if output="$(capture_adb_device install -r "$PROJECT_ROOT/$APK_RELATIVE_PATH")"; then
@@ -683,7 +720,7 @@ install_apk() {
 
   printf '%s\n' "$output" >&2
   if printf '%s' "$output" | grep -Eq "INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match"; then
-    remove_existing_kiosk_package_for_fresh_install
+    remove_existing_kiosk_package_for_fresh_install 1
     log "Installing APK after removing old package"
     if output="$(capture_adb_device install -r "$PROJECT_ROOT/$APK_RELATIVE_PATH")"; then
       printf '%s\n' "$output"
