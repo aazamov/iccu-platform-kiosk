@@ -17,7 +17,6 @@ import android.os.BatteryManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import android.view.ActionMode
 import android.view.ContextMenu
 import android.view.Gravity
@@ -54,6 +53,8 @@ class MainActivity : Activity() {
     private lateinit var loadingView: TextView
     private lateinit var batteryText: TextView
     private lateinit var wifiButton: ImageButton
+    private lateinit var wifiPanel: LinearLayout
+    private lateinit var wifiStatusText: TextView
     private lateinit var brightnessPanel: LinearLayout
     private lateinit var brightnessSlider: SeekBar
     private lateinit var devicePolicyManager: DevicePolicyManager
@@ -118,7 +119,6 @@ class MainActivity : Activity() {
             configureDeviceOwnerPolicies()
             startKioskMode()
         }, RELOCK_AFTER_EXTERNAL_PANEL_DELAY_MS)
-        scheduleWifiPanelRelock()
         wifiPanelGate.reset()
         updateWifiStatus()
         if (::webView.isInitialized && webView.url.isNullOrBlank()) {
@@ -274,7 +274,7 @@ class MainActivity : Activity() {
             contentDescription = "Wi-Fi"
             setOnClickListener {
                 if (wifiPanelGate.tryEnter()) {
-                    openWifiSettings()
+                    toggleWifiPanel()
                 }
             }
         }
@@ -398,6 +398,45 @@ class MainActivity : Activity() {
             )
         }
 
+        wifiStatusText = TextView(this).apply {
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setTextColor(ACTIVE_CONTROL_COLOR)
+            includeFontPadding = false
+        }
+
+        val wifiPanelCloseButton = TextView(this).apply {
+            text = "x"
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setTextColor(ACTIVE_CONTROL_COLOR)
+            includeFontPadding = false
+            contentDescription = "Close Wi-Fi status"
+            setOnClickListener {
+                wifiPanel.visibility = View.GONE
+                wifiPanelHandler.removeCallbacksAndMessages(null)
+                wifiPanelGate.reset()
+                enterFullscreen()
+                startKioskMode()
+            }
+        }
+
+        wifiPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(8), 0, dp(4), 0)
+            setBackgroundColor(Color.argb(225, 6, 36, 22))
+            visibility = View.GONE
+            addView(
+                wifiStatusText,
+                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f),
+            )
+            addView(
+                wifiPanelCloseButton,
+                LinearLayout.LayoutParams(dp(24), ViewGroup.LayoutParams.MATCH_PARENT),
+            )
+        }
+
         val exitHotspot = View(this).apply {
             alpha = 0.02f
             setBackgroundColor(Color.TRANSPARENT)
@@ -482,6 +521,13 @@ class MainActivity : Activity() {
                 },
             )
             addView(
+                wifiPanel,
+                FrameLayout.LayoutParams(dp(156), dp(30), Gravity.TOP or Gravity.END).apply {
+                    topMargin = dp(34)
+                    marginEnd = dp(8)
+                },
+            )
+            addView(
                 exitHotspot,
                 FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP or Gravity.START),
             )
@@ -504,6 +550,10 @@ class MainActivity : Activity() {
 
         val color = if (isWifiConnected()) ACTIVE_CONTROL_COLOR else INACTIVE_CONTROL_COLOR
         wifiButton.setColorFilter(color)
+        if (::wifiStatusText.isInitialized) {
+            wifiStatusText.text = if (isWifiConnected()) "Wi-Fi connected" else "Wi-Fi offline"
+            wifiStatusText.setTextColor(color)
+        }
     }
 
     private fun isWifiConnected(): Boolean {
@@ -594,33 +644,37 @@ class MainActivity : Activity() {
         dialog.show()
     }
 
-    private fun openWifiSettings() {
-        stopKioskMode()
-        scheduleWifiPanelRelock()
-
-        val wifiIntent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            Intent(Settings.Panel.ACTION_WIFI)
+    private fun toggleWifiPanel() {
+        enterFullscreen()
+        configureDeviceOwnerPolicies()
+        if (KioskActionPolicy.shouldStopKioskFor(KioskAction.WIFI_PANEL)) {
+            stopKioskMode()
         } else {
-            Intent(Settings.ACTION_WIFI_SETTINGS)
-        }.apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startKioskMode()
         }
+        updateWifiStatus()
 
-        try {
-            startActivity(wifiIntent)
-        } catch (_: Exception) {
-            startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        if (wifiPanel.visibility == View.VISIBLE) {
+            wifiPanel.visibility = View.GONE
+            wifiPanelHandler.removeCallbacksAndMessages(null)
+            wifiPanelGate.reset()
+        } else {
+            wifiPanel.visibility = View.VISIBLE
+            scheduleWifiPanelHide()
         }
     }
 
-    private fun scheduleWifiPanelRelock() {
+    private fun scheduleWifiPanelHide() {
         wifiPanelHandler.removeCallbacksAndMessages(null)
         wifiPanelHandler.postDelayed({
+            if (::wifiPanel.isInitialized) {
+                wifiPanel.visibility = View.GONE
+            }
             enterFullscreen()
             configureDeviceOwnerPolicies()
             startKioskMode()
             wifiPanelGate.reset()
-        }, WIFI_PANEL_RELOCK_DELAY_MS)
+        }, WIFI_PANEL_HIDE_DELAY_MS)
     }
 
     private fun toggleBrightnessPanel() {
@@ -712,7 +766,9 @@ class MainActivity : Activity() {
     }
 
     private fun exitApplication() {
-        stopKioskMode()
+        if (KioskActionPolicy.shouldStopKioskFor(KioskAction.PIN_EXIT)) {
+            stopKioskMode()
+        }
         finishAndRemoveTask()
     }
 
@@ -845,7 +901,7 @@ class MainActivity : Activity() {
         private const val EXIT_PRESS_DURATION_MS = 5_000L
         private const val CONTROL_PRESS_DURATION_MS = 3_000L
         private const val WIFI_PANEL_COOLDOWN_MS = 6_000L
-        private const val WIFI_PANEL_RELOCK_DELAY_MS = 8_000L
+        private const val WIFI_PANEL_HIDE_DELAY_MS = 8_000L
         private const val BRIGHTNESS_PANEL_HIDE_DELAY_MS = 6_000L
         private const val RELOCK_AFTER_EXTERNAL_PANEL_DELAY_MS = 1_000L
         private const val RESOURCE_CONNECT_TIMEOUT_MS = 8_000
