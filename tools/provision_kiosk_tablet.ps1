@@ -20,7 +20,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ScriptVersion = "2026-07-04.2-win"
+$ScriptVersion = "2026-07-04.3-win"
 $AppPackage = "uz.neovex.iccu.kiosk"
 $MainActivity = "uz.neovex.iccu.kiosk/.MainActivity"
 $AdminReceiver = "uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -965,6 +965,27 @@ function Ensure-WebViewUpdated {
     Write-Ok "Android System WebView updated: $updatedVersion"
 }
 
+function Remove-ExistingKioskPackageForFreshInstall {
+    Write-Warn "Installed kiosk package has a different signature. Removing old package before fresh install."
+
+    $result = Capture-AdbDevice -Arguments @("shell", "dpm", "remove-active-admin", $AdminReceiver)
+    if ($result.Text -ne "") {
+        Write-Host $result.Text
+    }
+    if ($result.Code -ne 0) {
+        Write-Warn "Could not remove active admin before uninstall. Continuing; uninstall may still work if app is not Device Owner."
+    }
+
+    $result = Capture-AdbDevice -Arguments @("uninstall", $AppPackage)
+    Write-Host $result.Text
+    if ($result.Code -eq 0) {
+        Write-Ok "Old kiosk package removed"
+        return
+    }
+
+    Fail "Could not uninstall old kiosk package. If it is Device Owner and cannot be removed, factory reset this tablet and run provisioning again."
+}
+
 function Install-Apk {
     Write-Step "Installing APK"
     $result = Capture-AdbDevice -Arguments @("install", "-r", $ApkPath)
@@ -973,6 +994,18 @@ function Install-Apk {
     if ($result.Code -eq 0) {
         Write-Ok "APK installed"
         return
+    }
+
+    if ($result.Text -match "INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match") {
+        Remove-ExistingKioskPackageForFreshInstall
+
+        Write-Step "Installing APK after removing old package"
+        $result = Capture-AdbDevice -Arguments @("install", "-r", $ApkPath)
+        Write-Host $result.Text
+        if ($result.Code -eq 0) {
+            Write-Ok "APK installed"
+            return
+        }
     }
 
     if ($result.Text -match "closed") {

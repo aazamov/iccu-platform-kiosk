@@ -2,7 +2,7 @@
 
 set -uo pipefail
 
-SCRIPT_VERSION="2026-07-04.2-mac"
+SCRIPT_VERSION="2026-07-04.6-mac"
 APP_PACKAGE="uz.neovex.iccu.kiosk"
 MAIN_ACTIVITY="uz.neovex.iccu.kiosk/.MainActivity"
 ADMIN_RECEIVER="uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -26,6 +26,8 @@ WIFI_SSID="Neo_wifi"
 WIFI_PASSWORD="12345678!!"
 SKIP_WIFI_SETUP=0
 WIFI_CONNECT_TIMEOUT_SECONDS=35
+ADB_COMMAND_TIMEOUT_SECONDS=45
+ADB_INSTALL_TIMEOUT_SECONDS=180
 
 if [[ -t 1 ]]; then
   GREEN="$(printf '\033[32m')"
@@ -115,12 +117,35 @@ run() {
   "$@" || fail "Command failed: $*"
 }
 
+run_with_timeout() {
+  local seconds="$1"
+  shift
+  if command -v perl >/dev/null 2>&1; then
+    perl -e 'alarm shift; exec @ARGV' "$seconds" "$@"
+  elif command -v timeout >/dev/null 2>&1; then
+    timeout "$seconds" "$@"
+  else
+    "$@"
+  fi
+}
+
 adb_device() {
-  "$ADB_BIN" -s "$SERIAL" "$@"
+  local timeout_seconds="$ADB_COMMAND_TIMEOUT_SECONDS"
+  if [[ "${1:-}" == "install" ]]; then
+    timeout_seconds="$ADB_INSTALL_TIMEOUT_SECONDS"
+  fi
+  run_with_timeout "$timeout_seconds" "$ADB_BIN" -s "$SERIAL" "$@"
 }
 
 capture_adb_device() {
   adb_device "$@" 2>&1
+}
+
+device_shell_is_responsive() {
+  local serial="$1"
+  local output
+  output="$(run_with_timeout 8 "$ADB_BIN" -s "$serial" shell echo ok 2>&1)" || return 1
+  [[ "$(printf '%s\n' "$output" | tail -1 | tr -d '\r')" == "ok" ]]
 }
 
 parse_args() {
@@ -240,6 +265,8 @@ select_target_devices() {
     local state
     state="$(device_state_for_serial "$SERIAL")"
     [[ "$state" == "device" ]] || fail "Device $SERIAL is not ready. Current state: ${state:-not found}. Run: adb devices"
+    device_shell_is_responsive "$SERIAL" ||
+      fail "Device $SERIAL is visible but adb shell is not responding. Reconnect USB or run: adb kill-server && adb start-server"
     TARGETS=("$SERIAL")
     ok "Using tablet $SERIAL"
     return
@@ -248,13 +275,20 @@ select_target_devices() {
   local ready_devices=()
   local unauthorized_devices=()
   local offline_devices=()
+  local unresponsive_devices=()
   local line serial state
   while IFS= read -r line; do
     [[ -n "$line" ]] || continue
     serial="$(printf '%s\n' "$line" | awk '{ print $1 }')"
     state="$(printf '%s\n' "$line" | awk '{ print $2 }')"
     case "$state" in
-      device) ready_devices+=("$serial") ;;
+      device)
+        if device_shell_is_responsive "$serial"; then
+          ready_devices+=("$serial")
+        else
+          unresponsive_devices+=("$serial")
+        fi
+        ;;
       unauthorized) unauthorized_devices+=("$serial") ;;
       offline) offline_devices+=("$serial") ;;
     esac
@@ -264,6 +298,11 @@ select_target_devices() {
     TARGETS=("${ready_devices[0]}")
     SERIAL="${ready_devices[0]}"
     ok "Using tablet $SERIAL"
+    if [[ ${#unresponsive_devices[@]} -gt 0 ]]; then
+      warn "Skipping adb-visible but shell-unresponsive tablet(s):"
+      printf '  %s\n' "${unresponsive_devices[@]}"
+      warn "Reconnect those tablets or run: adb kill-server && adb start-server"
+    fi
     return
   fi
 
@@ -278,6 +317,11 @@ select_target_devices() {
     if [[ ${#offline_devices[@]} -gt 0 ]]; then
       warn "Skipping offline tablet(s):"
       printf '  %s\n' "${offline_devices[@]}"
+    fi
+    if [[ ${#unresponsive_devices[@]} -gt 0 ]]; then
+      warn "Skipping adb-visible but shell-unresponsive tablet(s):"
+      printf '  %s\n' "${unresponsive_devices[@]}"
+      warn "Reconnect those tablets or run: adb kill-server && adb start-server"
     fi
     return
   fi
@@ -298,6 +342,12 @@ select_target_devices() {
     printf '%s\n' "Offline device(s):"
     printf '  %s\n' "${offline_devices[@]}"
     fail "Reconnect the tablet or run: adb kill-server && adb start-server"
+  fi
+
+  if [[ ${#unresponsive_devices[@]} -gt 0 ]]; then
+    printf '%s\n' "Shell-unresponsive device(s):"
+    printf '  %s\n' "${unresponsive_devices[@]}"
+    fail "Reconnect the tablet USB cable or run: adb kill-server && adb start-server"
   fi
 
   fail "No ready tablet found. Connect one tablet and run: adb devices"
@@ -548,6 +598,27 @@ install_webview_apk() {
   fail "Android System WebView install failed"
 }
 
+remove_existing_kiosk_package_for_fresh_install() {
+  warn "Installed kiosk package has a different signature. Removing old package before fresh install."
+
+  local output
+  if output="$(capture_adb_device shell dpm remove-active-admin "$ADMIN_RECEIVER")"; then
+    printf '%s\n' "$output"
+  else
+    printf '%s\n' "$output" >&2
+    warn "Could not remove active admin before uninstall. Continuing; uninstall may still work if app is not Device Owner."
+  fi
+
+  if output="$(capture_adb_device uninstall "$APP_PACKAGE")"; then
+    printf '%s\n' "$output"
+    ok "Old kiosk package removed"
+    return
+  fi
+
+  printf '%s\n' "$output" >&2
+  fail "Could not uninstall old kiosk package. If it is Device Owner and cannot be removed, factory reset this tablet and run provisioning again."
+}
+
 ensure_webview_updated() {
   if [[ "$SKIP_WEBVIEW_UPDATE" -eq 1 ]]; then
     warn "Skipping WebView update because --skip-webview-update was used"
@@ -611,6 +682,17 @@ install_apk() {
   fi
 
   printf '%s\n' "$output" >&2
+  if printf '%s' "$output" | grep -Eq "INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match"; then
+    remove_existing_kiosk_package_for_fresh_install
+    log "Installing APK after removing old package"
+    if output="$(capture_adb_device install -r "$PROJECT_ROOT/$APK_RELATIVE_PATH")"; then
+      printf '%s\n' "$output"
+      ok "APK installed"
+      return
+    fi
+    printf '%s\n' "$output" >&2
+  fi
+
   if printf '%s' "$output" | grep -qi "closed"; then
     refresh_adb_connection
     log "Retrying APK install"
@@ -688,19 +770,27 @@ launch_app() {
 
 verify_kiosk() {
   log "Verifying kiosk lock"
-  local activity_dump
-  activity_dump="$(capture_adb_device shell dumpsys activity activities || true)"
+  local activity_dump deadline
+  deadline=$((SECONDS + 30))
+
+  while [[ $SECONDS -lt $deadline ]]; do
+    activity_dump="$(capture_adb_device shell dumpsys activity activities || true)"
+
+    if printf '%s' "$activity_dump" | grep -q "$APP_PACKAGE" &&
+      printf '%s' "$activity_dump" | grep -q "mLockTaskModeState=LOCKED"; then
+      ok "Kiosk verified: mLockTaskModeState=LOCKED"
+      return
+    fi
+
+    sleep 2
+  done
 
   if ! printf '%s' "$activity_dump" | grep -q "$APP_PACKAGE"; then
     fail "Kiosk app is not visible in running activities"
   fi
 
-  if ! printf '%s' "$activity_dump" | grep -q "mLockTaskModeState=LOCKED"; then
-    printf '%s\n' "$activity_dump" | grep -E "mLockTaskModeState|$APP_PACKAGE" -C 2 || true
-    fail "Kiosk is not locked. Expected: mLockTaskModeState=LOCKED"
-  fi
-
-  ok "Kiosk verified: mLockTaskModeState=LOCKED"
+  printf '%s\n' "$activity_dump" | grep -E "mLockTaskModeState|$APP_PACKAGE" -C 2 || true
+  fail "Kiosk is not locked after 30 seconds. Expected: mLockTaskModeState=LOCKED"
 }
 
 provision_current_device() {
