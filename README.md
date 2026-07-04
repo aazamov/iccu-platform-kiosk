@@ -79,6 +79,20 @@ tools\provision_kiosk_tablet.bat -PrepareTools
 
 On Windows, running without `-Serial` provisions all connected authorized tablets. Use `-Serial DEVICE_SERIAL` for one tablet only.
 
+On macOS/Linux, old HK17 tablets need a newer Android System WebView APK. The script looks for it in:
+
+```text
+tools/.downloads/android-system-webview.apk
+tools/.downloads/android-system-webview-150.apk
+~/Downloads/*WebView*.apk
+```
+
+You can also pass a direct APK URL:
+
+```sh
+./tools/provision_kiosk_tablet.sh --webview-apk-url "https://.../android-system-webview.apk"
+```
+
 The Windows script connects each tablet to Wi-Fi `Neo_wifi` using the saved default password. If the tablet firmware blocks ADB Wi-Fi commands, the script installs the app, enables Device Owner, and then asks the kiosk app to configure Wi-Fi. To use another network:
 
 ```bat

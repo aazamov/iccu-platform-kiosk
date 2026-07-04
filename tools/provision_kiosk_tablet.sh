@@ -2,7 +2,7 @@
 
 set -uo pipefail
 
-SCRIPT_VERSION="2026-07-03.10-mac"
+SCRIPT_VERSION="2026-07-04.1-mac"
 APP_PACKAGE="uz.neovex.iccu.kiosk"
 MAIN_ACTIVITY="uz.neovex.iccu.kiosk/.MainActivity"
 ADMIN_RECEIVER="uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -20,6 +20,7 @@ RUN_TESTS=1
 SINGLE_DEVICE=0
 SKIP_WEBVIEW_UPDATE=0
 WEBVIEW_APK=""
+WEBVIEW_APK_URL="${WEBVIEW_APK_URL:-}"
 MINIMUM_WEBVIEW_MAJOR=100
 WIFI_SSID="Neo_wifi"
 WIFI_PASSWORD="12345678!!"
@@ -63,6 +64,7 @@ What it does:
 
 Options:
   --webview-apk PATH              Use a specific Android System WebView APK
+  --webview-apk-url URL           Download Android System WebView APK into tools/.downloads
   --skip-webview-update           Do not update Android System WebView
   --minimum-webview-major NUMBER  Default: $MINIMUM_WEBVIEW_MAJOR
   --wifi-ssid SSID                Default: $WIFI_SSID
@@ -124,6 +126,11 @@ parse_args() {
       --webview-apk)
         [[ $# -ge 2 ]] || fail "--webview-apk requires a value"
         WEBVIEW_APK="$2"
+        shift 2
+        ;;
+      --webview-apk-url)
+        [[ $# -ge 2 ]] || fail "--webview-apk-url requires a value"
+        WEBVIEW_APK_URL="$2"
         shift 2
         ;;
       --skip-webview-update)
@@ -449,6 +456,45 @@ resolve_webview_apk() {
       return
     fi
   done
+
+  local download_candidates=()
+  shopt -s nullglob
+  download_candidates=(
+    "$HOME"/Downloads/android-system-webview*.apk
+    "$HOME"/Downloads/*WebView*.apk
+    "$HOME"/Downloads/*webview*.apk
+  )
+  shopt -u nullglob
+
+  for candidate in "${download_candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+}
+
+download_webview_apk() {
+  if [[ -z "$WEBVIEW_APK_URL" ]]; then
+    return
+  fi
+
+  mkdir -p "$DOWNLOADS_ROOT"
+  local out_file="$DOWNLOADS_ROOT/android-system-webview.apk"
+  printf '%s\n' "${BOLD}==>${RESET} Downloading Android System WebView APK" >&2
+  if ! curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 -o "$out_file" "$WEBVIEW_APK_URL"; then
+    rm -f "$out_file"
+    fail "WebView APK download failed. Pass a fresh direct URL with --webview-apk-url or copy APK to tools/.downloads/android-system-webview.apk"
+  fi
+
+  local size
+  size="$(wc -c < "$out_file" | tr -d ' ')"
+  if [[ "${size:-0}" -lt 50000000 ]]; then
+    rm -f "$out_file"
+    fail "Downloaded WebView APK is too small. The download link may be expired; pass a fresh direct APK URL."
+  fi
+
+  printf '%s\n' "$out_file"
 }
 
 install_webview_apk() {
@@ -507,9 +553,18 @@ ensure_webview_updated() {
   local webview_apk_path
   webview_apk_path="$(resolve_webview_apk)"
   if [[ -z "$webview_apk_path" ]]; then
+    webview_apk_path="$(download_webview_apk)"
+  fi
+  if [[ -z "$webview_apk_path" ]]; then
     printf '\n%s\n' "Put Android System WebView APK here, then run again:"
     printf '%s\n' "  tools/.downloads/android-system-webview.apk"
     printf '%s\n' "  tools/.downloads/android-system-webview-150.apk"
+    printf '\n%s\n' "Or pass a fresh direct download URL:"
+    printf '%s\n' "  ./tools/provision_kiosk_tablet.sh --webview-apk-url 'https://.../android-system-webview.apk'"
+    printf '\n%s\n' "For HK17 Android 10 tablets use:"
+    printf '%s\n' "  package: $WEBVIEW_PACKAGE"
+    printf '%s\n' "  arch: arm64-v8a + armeabi-v7a"
+    printf '%s\n' "  min Android: Android 10 / API 29"
     fail "WebView APK is required because tablet WebView is old"
   fi
 
