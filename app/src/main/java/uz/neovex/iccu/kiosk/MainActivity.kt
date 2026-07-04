@@ -61,6 +61,8 @@ class MainActivity : Activity() {
     private val exitHandler = Handler(Looper.getMainLooper())
     private val actionHandler = Handler(Looper.getMainLooper())
     private val brightnessHandler = Handler(Looper.getMainLooper())
+    private val wifiPanelHandler = Handler(Looper.getMainLooper())
+    private val wifiPanelGate = TimedActionGate(WIFI_PANEL_COOLDOWN_MS)
     private var exitDialogPending = false
     private var reloadActionPending = false
     private var blankPageReloadCount = 0
@@ -98,6 +100,7 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         runCatching { unregisterReceiver(batteryReceiver) }
         runCatching { unregisterReceiver(networkReceiver) }
+        wifiPanelHandler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
@@ -115,6 +118,8 @@ class MainActivity : Activity() {
             configureDeviceOwnerPolicies()
             startKioskMode()
         }, RELOCK_AFTER_EXTERNAL_PANEL_DELAY_MS)
+        scheduleWifiPanelRelock()
+        wifiPanelGate.reset()
         updateWifiStatus()
         if (::webView.isInitialized && webView.url.isNullOrBlank()) {
             webView.postDelayed({ loadKioskPage() }, 1_500L)
@@ -268,7 +273,9 @@ class MainActivity : Activity() {
             scaleType = ImageView.ScaleType.CENTER
             contentDescription = "Wi-Fi"
             setOnClickListener {
-                openWifiSettings()
+                if (wifiPanelGate.tryEnter()) {
+                    openWifiSettings()
+                }
             }
         }
 
@@ -589,6 +596,7 @@ class MainActivity : Activity() {
 
     private fun openWifiSettings() {
         stopKioskMode()
+        scheduleWifiPanelRelock()
 
         val wifiIntent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             Intent(Settings.Panel.ACTION_WIFI)
@@ -603,6 +611,16 @@ class MainActivity : Activity() {
         } catch (_: Exception) {
             startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
+    }
+
+    private fun scheduleWifiPanelRelock() {
+        wifiPanelHandler.removeCallbacksAndMessages(null)
+        wifiPanelHandler.postDelayed({
+            enterFullscreen()
+            configureDeviceOwnerPolicies()
+            startKioskMode()
+            wifiPanelGate.reset()
+        }, WIFI_PANEL_RELOCK_DELAY_MS)
     }
 
     private fun toggleBrightnessPanel() {
@@ -826,6 +844,8 @@ class MainActivity : Activity() {
         private const val MAX_BLANK_PAGE_RELOADS = 3
         private const val EXIT_PRESS_DURATION_MS = 5_000L
         private const val CONTROL_PRESS_DURATION_MS = 3_000L
+        private const val WIFI_PANEL_COOLDOWN_MS = 6_000L
+        private const val WIFI_PANEL_RELOCK_DELAY_MS = 8_000L
         private const val BRIGHTNESS_PANEL_HIDE_DELAY_MS = 6_000L
         private const val RELOCK_AFTER_EXTERNAL_PANEL_DELAY_MS = 1_000L
         private const val RESOURCE_CONNECT_TIMEOUT_MS = 8_000
