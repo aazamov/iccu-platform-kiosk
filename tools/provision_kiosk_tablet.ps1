@@ -20,12 +20,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ScriptVersion = "2026-07-04.4-win"
+$ScriptVersion = "2026-07-04.5-win"
 $AppPackage = "uz.neovex.iccu.kiosk"
 $MainActivity = "uz.neovex.iccu.kiosk/.MainActivity"
 $AdminReceiver = "uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
 $WifiProvisionReceiver = "uz.neovex.iccu.kiosk/.WifiProvisionReceiver"
 $WifiProvisionAction = "uz.neovex.iccu.kiosk.PROVISION_WIFI"
+$DeviceOwnerControlReceiver = "uz.neovex.iccu.kiosk/.DeviceOwnerControlReceiver"
+$DeviceOwnerClearAction = "uz.neovex.iccu.kiosk.CLEAR_DEVICE_OWNER"
 $WebViewPackage = "com.google.android.webview"
 $ApkRelativePath = "app\build\outputs\apk\debug\app-debug.apk"
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -978,6 +980,26 @@ function Remove-ExistingKioskPackageForFreshInstall {
     }
 
     Write-Warn "Removing previously installed kiosk package before fresh install."
+
+    if (Test-OurAppIsDeviceOwner) {
+        Write-Step "Requesting kiosk app to clear Device Owner"
+        $result = Capture-AdbDevice -Arguments @("shell", "am", "broadcast", "-a", $DeviceOwnerClearAction, "-n", $DeviceOwnerControlReceiver)
+        if ($result.Text -ne "") {
+            Write-Host $result.Text
+        }
+        if ($result.Code -ne 0) {
+            Write-Warn "Installed kiosk app may be too old to clear Device Owner itself."
+        } else {
+            $deadline = (Get-Date).AddSeconds(15)
+            while ((Get-Date) -lt $deadline) {
+                if (-not (Test-OurAppIsDeviceOwner)) {
+                    Write-Ok "Device Owner removed by kiosk app"
+                    break
+                }
+                Start-Sleep -Seconds 1
+            }
+        }
+    }
 
     $result = Capture-AdbDevice -Arguments @("shell", "dpm", "remove-active-admin", $AdminReceiver)
     if ($result.Text -ne "") {
