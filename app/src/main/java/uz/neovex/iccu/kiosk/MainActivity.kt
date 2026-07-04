@@ -877,22 +877,38 @@ class MainActivity : Activity() {
             labels.forEach { label ->
                 addView(
                     createWifiKeyboardKey(label),
-                    LinearLayout.LayoutParams(0, dp(28), 1f).apply {
+                    LinearLayout.LayoutParams(0, dp(28), wifiKeyboardKeyWeight(label)).apply {
                         setMargins(dp(1), dp(1), dp(1), dp(1))
                     },
                 )
             }
         }
 
+    private fun wifiKeyboardKeyWeight(label: String): Float =
+        when (label) {
+            "Backspace" -> 1.45f
+            "Shift", "Clear", "Done", "123", "ABC" -> 1.2f
+            else -> 1f
+        }
+
     private fun createWifiKeyboardKey(label: String): TextView =
         TextView(this).apply {
-            text = if (label == "Shift" && wifiPasswordState.shifted) "SHIFT" else label
-            textSize = if (label.length > 3) 9f else 11f
+            text = wifiKeyboardDisplayLabel(label)
+            textSize = if (label == "Backspace") 9f else 11f
             gravity = Gravity.CENTER
             includeFontPadding = false
+            maxLines = 1
             setTextColor(ACTIVE_CONTROL_COLOR)
             setBackgroundColor(Color.argb(180, 10, 48, 30))
             setOnClickListener { handleWifiKeyboardKey(label) }
+        }
+
+    private fun wifiKeyboardDisplayLabel(label: String): String =
+        when (label) {
+            "Backspace" -> "Bksp"
+            "Clear" -> "Clr"
+            "Shift" -> if (wifiPasswordState.shifted) "SHFT" else "Shift"
+            else -> label
         }
 
     private fun handleWifiKeyboardKey(label: String) {
