@@ -11,6 +11,11 @@ class KioskActionPolicyTest {
     }
 
     @Test
+    fun wifiPanelMustNotAutoHide() {
+        assertFalse(KioskActionPolicy.shouldAutoHide(KioskAction.WIFI_PANEL))
+    }
+
+    @Test
     fun pinExitCanStopKioskMode() {
         assertTrue(KioskActionPolicy.shouldStopKioskFor(KioskAction.PIN_EXIT))
     }

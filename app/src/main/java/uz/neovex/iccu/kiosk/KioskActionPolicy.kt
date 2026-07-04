@@ -11,4 +11,10 @@ object KioskActionPolicy {
             KioskAction.WIFI_PANEL -> false
             KioskAction.PIN_EXIT -> true
         }
+
+    fun shouldAutoHide(action: KioskAction): Boolean =
+        when (action) {
+            KioskAction.WIFI_PANEL -> false
+            KioskAction.PIN_EXIT -> false
+        }
 }

@@ -797,7 +797,9 @@ class MainActivity : Activity() {
             wifiPanelGate.reset()
         } else {
             wifiPanel.visibility = View.VISIBLE
-            scheduleWifiPanelHide()
+            if (!KioskActionPolicy.shouldAutoHide(KioskAction.WIFI_PANEL)) {
+                wifiPanelHandler.removeCallbacksAndMessages(null)
+            }
         }
     }
 
@@ -985,20 +987,6 @@ class MainActivity : Activity() {
         if (::wifiKeyboardContainer.isInitialized) {
             wifiKeyboardContainer.visibility = View.GONE
         }
-    }
-
-    private fun scheduleWifiPanelHide() {
-        wifiPanelHandler.removeCallbacksAndMessages(null)
-        wifiPanelHandler.postDelayed({
-            if (::wifiPanel.isInitialized) {
-                clearWifiSelection()
-                wifiPanel.visibility = View.GONE
-            }
-            enterFullscreen()
-            configureDeviceOwnerPolicies()
-            startKioskMode()
-            wifiPanelGate.reset()
-        }, WIFI_PANEL_HIDE_DELAY_MS)
     }
 
     private fun toggleBrightnessPanel() {
@@ -1225,7 +1213,6 @@ class MainActivity : Activity() {
         private const val EXIT_PRESS_DURATION_MS = 5_000L
         private const val CONTROL_PRESS_DURATION_MS = 3_000L
         private const val WIFI_PANEL_COOLDOWN_MS = 6_000L
-        private const val WIFI_PANEL_HIDE_DELAY_MS = 8_000L
         private const val BRIGHTNESS_PANEL_HIDE_DELAY_MS = 6_000L
         private const val RELOCK_AFTER_EXTERNAL_PANEL_DELAY_MS = 1_000L
         private const val RESOURCE_CONNECT_TIMEOUT_MS = 8_000
