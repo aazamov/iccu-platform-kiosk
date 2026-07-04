@@ -647,7 +647,7 @@ class MainActivity : Activity() {
             )
             addView(
                 wifiPanel,
-                FrameLayout.LayoutParams(dp(260), dp(292), Gravity.TOP or Gravity.END).apply {
+                FrameLayout.LayoutParams(dp(260), dp(420), Gravity.TOP or Gravity.END).apply {
                     topMargin = dp(34)
                     marginEnd = dp(8)
                 },
