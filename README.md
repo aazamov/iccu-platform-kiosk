@@ -51,6 +51,8 @@ For operators who only need to connect a prepared tablet and install kiosk mode:
 ./tools/provision_kiosk_tablet.sh
 ```
 
+On macOS, `tools/provision_kiosk_tablet.command` is a double-click launcher for the same script.
+
 If multiple tablets are connected:
 
 ```sh
