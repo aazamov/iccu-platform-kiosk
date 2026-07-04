@@ -805,7 +805,7 @@ class MainActivity : Activity() {
 
     private fun refreshWifiPanel() {
         updateWifiStatus()
-        wifiPowerButton.text = if (wifiController.isWifiEnabled()) "Wi-Fi ON" else "Wi-Fi OFF"
+        wifiPowerButton.text = WifiPowerButtonText.forEnabled(wifiController.isWifiEnabled())
         wifiStatusText.text = wifiController.currentSsid()?.let { "Connected: $it" } ?: "Wi-Fi offline"
         refreshWifiNetworks()
     }
@@ -941,10 +941,26 @@ class MainActivity : Activity() {
 
     private fun toggleWifiPower() {
         enforceKioskAfterWifiAction()
-        val result = wifiController.setWifiEnabled(!wifiController.isWifiEnabled())
+        val targetEnabled = !wifiController.isWifiEnabled()
+        val result = wifiController.setWifiEnabled(targetEnabled)
         showWifiResult(result)
         refreshWifiPanel()
+        if (result == WifiConnectionResult.Success) {
+            wifiPowerButton.text = WifiPowerButtonText.forEnabled(targetEnabled)
+        }
+        scheduleWifiPanelRefresh()
         enforceKioskAfterWifiAction()
+    }
+
+    private fun scheduleWifiPanelRefresh() {
+        WIFI_STATE_REFRESH_DELAYS_MS.forEach { delayMs ->
+            wifiPanelHandler.postDelayed({
+                if (::wifiPanel.isInitialized && wifiPanel.visibility == View.VISIBLE) {
+                    refreshWifiPanel()
+                    enforceKioskAfterWifiAction()
+                }
+            }, delayMs)
+        }
     }
 
     private fun connectSelectedWifiNetwork() {
@@ -1219,6 +1235,7 @@ class MainActivity : Activity() {
         private const val RESOURCE_READ_TIMEOUT_MS = 12_000
         private const val MIN_BRIGHTNESS_PROGRESS = 5
         private const val BRIGHTNESS_STEP = 10
+        private val WIFI_STATE_REFRESH_DELAYS_MS = longArrayOf(2_500L, 8_000L)
         private val ACTIVE_CONTROL_COLOR = Color.rgb(218, 185, 73)
         private val INACTIVE_CONTROL_COLOR = Color.rgb(110, 118, 102)
     }

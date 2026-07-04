@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId = "uz.neovex.iccu.kiosk"
         minSdk = 23
-        targetSdk = 36
+        targetSdk = 28
         versionCode = 1
         versionName = "1.0"
 
