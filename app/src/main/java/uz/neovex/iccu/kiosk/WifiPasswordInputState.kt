@@ -34,6 +34,12 @@ class WifiPasswordInputState {
         buffer.clear()
     }
 
+    fun reset() {
+        buffer.clear()
+        mode = WifiKeyboardMode.LETTERS
+        shifted = false
+    }
+
     fun toggleShift() {
         shifted = !shifted
     }

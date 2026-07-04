@@ -482,6 +482,13 @@ class MainActivity : Activity() {
             setPadding(dp(8), dp(6), dp(8), dp(6))
             setBackgroundColor(Color.argb(130, 2, 18, 12))
             visibility = View.GONE
+            setOnClickListener {
+                if (selectedWifiNetwork?.security == WifiSecurity.WPA_PSK) {
+                    wifiKeyboardContainer.visibility = View.VISIBLE
+                    renderWifiKeyboard()
+                    enforceKioskAfterWifiAction()
+                }
+            }
         }
 
         wifiKeyboardContainer = LinearLayout(this).apply {
@@ -832,7 +839,7 @@ class MainActivity : Activity() {
             includeFontPadding = false
             setPadding(dp(6), dp(5), dp(6), dp(5))
             setOnClickListener {
-                wifiPasswordState.clear()
+                wifiPasswordState.reset()
                 updateWifiPasswordDisplay()
                 selectedWifiNetwork = network
                 val needsPassword = network.security == WifiSecurity.WPA_PSK
@@ -916,7 +923,7 @@ class MainActivity : Activity() {
             "Shift" -> wifiPasswordState.toggleShift()
             "123", "ABC" -> wifiPasswordState.toggleMode()
             "Backspace" -> wifiPasswordState.backspace()
-            "Clear" -> wifiPasswordState.clear()
+            "Clear" -> wifiPasswordState.reset()
             "Done" -> wifiKeyboardContainer.visibility = View.GONE
             else -> wifiPasswordState.appendKey(label)
         }
@@ -945,7 +952,7 @@ class MainActivity : Activity() {
             return
         }
         val password = wifiPasswordState.password
-        wifiPasswordState.clear()
+        wifiPasswordState.reset()
         val result = wifiController.connect(network, password)
         showWifiResult(result)
         selectedWifiNetwork = null
@@ -970,7 +977,7 @@ class MainActivity : Activity() {
 
     private fun clearWifiSelection() {
         selectedWifiNetwork = null
-        wifiPasswordState.clear()
+        wifiPasswordState.reset()
         if (::wifiPasswordDisplay.isInitialized) {
             updateWifiPasswordDisplay()
             wifiPasswordDisplay.visibility = View.GONE

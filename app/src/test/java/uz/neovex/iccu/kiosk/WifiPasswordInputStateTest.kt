@@ -52,6 +52,20 @@ class WifiPasswordInputStateTest {
     }
 
     @Test
+    fun resetReturnsKeyboardToDefaultState() {
+        val state = WifiPasswordInputState()
+
+        state.toggleShift()
+        state.toggleMode()
+        state.appendKey("!")
+        state.reset()
+
+        assertEquals("", state.password)
+        assertEquals(WifiKeyboardMode.LETTERS, state.mode)
+        assertFalse(state.shifted)
+    }
+
+    @Test
     fun symbolsModeAcceptsWifiPasswordSymbols() {
         val state = WifiPasswordInputState()
 
