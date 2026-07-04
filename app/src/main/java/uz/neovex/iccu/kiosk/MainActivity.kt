@@ -478,11 +478,13 @@ class MainActivity : Activity() {
 
         wifiPasswordDisplay = TextView(this).apply {
             text = "Password"
-            textSize = 12f
+            textSize = 11f
             gravity = Gravity.CENTER_VERTICAL
+            includeFontPadding = false
+            maxLines = 1
             setTextColor(Color.WHITE)
-            setPadding(dp(8), dp(6), dp(8), dp(6))
-            setBackgroundColor(Color.argb(130, 2, 18, 12))
+            setPadding(dp(7), 0, dp(7), 0)
+            setBackgroundColor(Color.argb(120, 2, 18, 12))
             setOnClickListener {
                 if (selectedWifiNetwork?.security == WifiSecurity.WPA_PSK) {
                     wifiKeyboardContainer.visibility = View.VISIBLE
@@ -493,13 +495,14 @@ class MainActivity : Activity() {
         }
 
         wifiPasswordVisibilityButton = TextView(this).apply {
-            text = "Show"
-            textSize = 11f
+            text = "View"
+            textSize = 10f
             gravity = Gravity.CENTER
             includeFontPadding = false
+            maxLines = 1
             setTextColor(ACTIVE_CONTROL_COLOR)
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-            setBackgroundColor(Color.argb(150, 10, 48, 30))
+            setPadding(dp(4), 0, dp(4), 0)
+            setBackgroundColor(Color.argb(120, 2, 18, 12))
             setOnClickListener {
                 if (selectedWifiNetwork?.security == WifiSecurity.WPA_PSK) {
                     wifiPasswordState.toggleVisibility()
@@ -514,11 +517,11 @@ class MainActivity : Activity() {
             visibility = View.GONE
             addView(
                 wifiPasswordDisplay,
-                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
+                LinearLayout.LayoutParams(0, dp(28), 1f),
             )
             addView(
                 wifiPasswordVisibilityButton,
-                LinearLayout.LayoutParams(dp(54), ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                LinearLayout.LayoutParams(dp(48), dp(28)).apply {
                     marginStart = dp(4)
                 },
             )
@@ -971,7 +974,7 @@ class MainActivity : Activity() {
         if (!::wifiPasswordDisplay.isInitialized) return
         wifiPasswordDisplay.text = wifiPasswordState.displayPassword().ifBlank { "Password" }
         if (::wifiPasswordVisibilityButton.isInitialized) {
-            wifiPasswordVisibilityButton.text = if (wifiPasswordState.passwordVisible) "Hide" else "Show"
+            wifiPasswordVisibilityButton.text = if (wifiPasswordState.passwordVisible) "Hide" else "View"
         }
     }
 
