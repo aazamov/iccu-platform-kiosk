@@ -58,7 +58,9 @@ class MainActivity : Activity() {
     private lateinit var wifiStatusText: TextView
     private lateinit var wifiController: KioskWifiController
     private lateinit var wifiNetworksContainer: LinearLayout
+    private lateinit var wifiPasswordRow: LinearLayout
     private lateinit var wifiPasswordDisplay: TextView
+    private lateinit var wifiPasswordVisibilityButton: TextView
     private lateinit var wifiKeyboardContainer: LinearLayout
     private lateinit var wifiMessageText: TextView
     private lateinit var wifiPowerButton: TextView
@@ -481,7 +483,6 @@ class MainActivity : Activity() {
             setTextColor(Color.WHITE)
             setPadding(dp(8), dp(6), dp(8), dp(6))
             setBackgroundColor(Color.argb(130, 2, 18, 12))
-            visibility = View.GONE
             setOnClickListener {
                 if (selectedWifiNetwork?.security == WifiSecurity.WPA_PSK) {
                     wifiKeyboardContainer.visibility = View.VISIBLE
@@ -489,6 +490,38 @@ class MainActivity : Activity() {
                     enforceKioskAfterWifiAction()
                 }
             }
+        }
+
+        wifiPasswordVisibilityButton = TextView(this).apply {
+            text = "Show"
+            textSize = 11f
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            setTextColor(ACTIVE_CONTROL_COLOR)
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            setBackgroundColor(Color.argb(150, 10, 48, 30))
+            setOnClickListener {
+                if (selectedWifiNetwork?.security == WifiSecurity.WPA_PSK) {
+                    wifiPasswordState.toggleVisibility()
+                    updateWifiPasswordDisplay()
+                    enforceKioskAfterWifiAction()
+                }
+            }
+        }
+
+        wifiPasswordRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            visibility = View.GONE
+            addView(
+                wifiPasswordDisplay,
+                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
+            )
+            addView(
+                wifiPasswordVisibilityButton,
+                LinearLayout.LayoutParams(dp(54), ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    marginStart = dp(4)
+                },
+            )
         }
 
         wifiKeyboardContainer = LinearLayout(this).apply {
@@ -540,7 +573,7 @@ class MainActivity : Activity() {
                 ),
             )
             addView(
-                wifiPasswordDisplay,
+                wifiPasswordRow,
                 LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -845,7 +878,7 @@ class MainActivity : Activity() {
                 updateWifiPasswordDisplay()
                 selectedWifiNetwork = network
                 val needsPassword = network.security == WifiSecurity.WPA_PSK
-                wifiPasswordDisplay.visibility = if (needsPassword) View.VISIBLE else View.GONE
+                wifiPasswordRow.visibility = if (needsPassword) View.VISIBLE else View.GONE
                 wifiKeyboardContainer.visibility = if (needsPassword) View.VISIBLE else View.GONE
                 if (needsPassword) renderWifiKeyboard()
                 wifiMessageText.text = if (network.security == WifiSecurity.UNSUPPORTED) {
@@ -936,7 +969,10 @@ class MainActivity : Activity() {
 
     private fun updateWifiPasswordDisplay() {
         if (!::wifiPasswordDisplay.isInitialized) return
-        wifiPasswordDisplay.text = wifiPasswordState.maskedPassword().ifBlank { "Password" }
+        wifiPasswordDisplay.text = wifiPasswordState.displayPassword().ifBlank { "Password" }
+        if (::wifiPasswordVisibilityButton.isInitialized) {
+            wifiPasswordVisibilityButton.text = if (wifiPasswordState.passwordVisible) "Hide" else "Show"
+        }
     }
 
     private fun toggleWifiPower() {
@@ -974,7 +1010,7 @@ class MainActivity : Activity() {
         val result = wifiController.connect(network, password)
         showWifiResult(result)
         selectedWifiNetwork = null
-        wifiPasswordDisplay.visibility = View.GONE
+        wifiPasswordRow.visibility = View.GONE
         wifiKeyboardContainer.visibility = View.GONE
         refreshWifiPanel()
         enforceKioskAfterWifiAction()
@@ -998,7 +1034,9 @@ class MainActivity : Activity() {
         wifiPasswordState.reset()
         if (::wifiPasswordDisplay.isInitialized) {
             updateWifiPasswordDisplay()
-            wifiPasswordDisplay.visibility = View.GONE
+        }
+        if (::wifiPasswordRow.isInitialized) {
+            wifiPasswordRow.visibility = View.GONE
         }
         if (::wifiKeyboardContainer.isInitialized) {
             wifiKeyboardContainer.visibility = View.GONE
