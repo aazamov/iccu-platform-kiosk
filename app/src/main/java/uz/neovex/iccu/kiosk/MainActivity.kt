@@ -1,5 +1,6 @@
 package uz.neovex.iccu.kiosk
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.ActivityManager
@@ -55,6 +56,11 @@ class MainActivity : Activity() {
     private lateinit var wifiButton: ImageButton
     private lateinit var wifiPanel: LinearLayout
     private lateinit var wifiStatusText: TextView
+    private lateinit var wifiController: KioskWifiController
+    private lateinit var wifiNetworksContainer: LinearLayout
+    private lateinit var wifiPasswordInput: EditText
+    private lateinit var wifiMessageText: TextView
+    private lateinit var wifiPowerButton: TextView
     private lateinit var brightnessPanel: LinearLayout
     private lateinit var brightnessSlider: SeekBar
     private lateinit var devicePolicyManager: DevicePolicyManager
@@ -68,6 +74,7 @@ class MainActivity : Activity() {
     private var reloadActionPending = false
     private var blankPageReloadCount = 0
     private var lastConsoleMessage = ""
+    private var selectedWifiNetwork: WifiNetworkInfo? = null
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             updateBattery(intent)
@@ -86,6 +93,7 @@ class MainActivity : Activity() {
 
         devicePolicyManager = getSystemService(DevicePolicyManager::class.java)
         adminComponent = ComponentName(this, KioskDeviceAdminReceiver::class.java)
+        wifiController = KioskWifiController(this)
 
         configureDeviceOwnerPolicies()
         setContentView(createLayout())
@@ -405,6 +413,25 @@ class MainActivity : Activity() {
             includeFontPadding = false
         }
 
+        wifiPowerButton = TextView(this).apply {
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setTextColor(ACTIVE_CONTROL_COLOR)
+            includeFontPadding = false
+            setPadding(dp(6), dp(5), dp(6), dp(5))
+            setOnClickListener { toggleWifiPower() }
+        }
+
+        val wifiRefreshButton = TextView(this).apply {
+            text = "Refresh"
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setTextColor(ACTIVE_CONTROL_COLOR)
+            includeFontPadding = false
+            setPadding(dp(6), dp(5), dp(6), dp(5))
+            setOnClickListener { refreshWifiNetworks() }
+        }
+
         val wifiPanelCloseButton = TextView(this).apply {
             text = "x"
             textSize = 14f
@@ -412,6 +439,7 @@ class MainActivity : Activity() {
             setTextColor(ACTIVE_CONTROL_COLOR)
             includeFontPadding = false
             contentDescription = "Close Wi-Fi status"
+            setPadding(dp(6), dp(5), dp(6), dp(5))
             setOnClickListener {
                 wifiPanel.visibility = View.GONE
                 wifiPanelHandler.removeCallbacksAndMessages(null)
@@ -421,19 +449,97 @@ class MainActivity : Activity() {
             }
         }
 
-        wifiPanel = LinearLayout(this).apply {
+        val wifiPanelHeader = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(dp(8), 0, dp(4), 0)
-            setBackgroundColor(Color.argb(225, 6, 36, 22))
-            visibility = View.GONE
+            gravity = Gravity.CENTER_VERTICAL
             addView(
-                wifiStatusText,
-                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f),
+                wifiPowerButton,
+                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
+            )
+            addView(
+                wifiRefreshButton,
+                LinearLayout.LayoutParams(dp(70), ViewGroup.LayoutParams.WRAP_CONTENT),
             )
             addView(
                 wifiPanelCloseButton,
-                LinearLayout.LayoutParams(dp(24), ViewGroup.LayoutParams.MATCH_PARENT),
+                LinearLayout.LayoutParams(dp(28), ViewGroup.LayoutParams.WRAP_CONTENT),
+            )
+        }
+
+        wifiNetworksContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        wifiPasswordInput = EditText(this).apply {
+            hint = "Password"
+            textSize = 12f
+            setSingleLine(true)
+            visibility = View.GONE
+        }
+
+        val wifiConnectButton = TextView(this).apply {
+            text = "Connect"
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setTextColor(ACTIVE_CONTROL_COLOR)
+            includeFontPadding = false
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            setOnClickListener { connectSelectedWifiNetwork() }
+        }
+
+        wifiMessageText = TextView(this).apply {
+            textSize = 11f
+            setTextColor(INACTIVE_CONTROL_COLOR)
+            includeFontPadding = false
+            setPadding(dp(6), dp(3), dp(6), dp(6))
+        }
+
+        wifiPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), dp(6), dp(8), dp(6))
+            setBackgroundColor(Color.argb(225, 6, 36, 22))
+            visibility = View.GONE
+            addView(
+                wifiPanelHeader,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+            addView(
+                wifiStatusText,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+            addView(
+                wifiNetworksContainer,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+            addView(
+                wifiPasswordInput,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+            addView(
+                wifiConnectButton,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+            addView(
+                wifiMessageText,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
             )
         }
 
@@ -522,7 +628,7 @@ class MainActivity : Activity() {
             )
             addView(
                 wifiPanel,
-                FrameLayout.LayoutParams(dp(156), dp(30), Gravity.TOP or Gravity.END).apply {
+                FrameLayout.LayoutParams(dp(260), dp(292), Gravity.TOP or Gravity.END).apply {
                     topMargin = dp(34)
                     marginEnd = dp(8)
                 },
@@ -572,6 +678,14 @@ class MainActivity : Activity() {
             devicePolicyManager.setLockTaskFeatures(
                 adminComponent,
                 DevicePolicyManager.LOCK_TASK_FEATURE_NONE,
+            )
+        }
+        runCatching {
+            devicePolicyManager.setPermissionGrantState(
+                adminComponent,
+                packageName,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED,
             )
         }
         devicePolicyManager.setKeyguardDisabled(adminComponent, true)
@@ -647,12 +761,8 @@ class MainActivity : Activity() {
     private fun toggleWifiPanel() {
         enterFullscreen()
         configureDeviceOwnerPolicies()
-        if (KioskActionPolicy.shouldStopKioskFor(KioskAction.WIFI_PANEL)) {
-            stopKioskMode()
-        } else {
-            startKioskMode()
-        }
-        updateWifiStatus()
+        startKioskMode()
+        refreshWifiPanel()
 
         if (wifiPanel.visibility == View.VISIBLE) {
             wifiPanel.visibility = View.GONE
@@ -662,6 +772,83 @@ class MainActivity : Activity() {
             wifiPanel.visibility = View.VISIBLE
             scheduleWifiPanelHide()
         }
+    }
+
+    private fun refreshWifiPanel() {
+        updateWifiStatus()
+        wifiPowerButton.text = if (wifiController.isWifiEnabled()) "Wi-Fi ON" else "Wi-Fi OFF"
+        wifiStatusText.text = wifiController.currentSsid()?.let { "Connected: $it" } ?: "Wi-Fi offline"
+        refreshWifiNetworks()
+    }
+
+    private fun refreshWifiNetworks() {
+        if (!::wifiNetworksContainer.isInitialized) return
+        wifiNetworksContainer.removeAllViews()
+        val networks = runCatching { wifiController.scanNetworks() }
+            .getOrElse {
+                if (::wifiMessageText.isInitialized) {
+                    wifiMessageText.text = WifiOperationMessages.blocked().message
+                }
+                emptyList()
+            }
+            .take(6)
+        networks.forEach { network ->
+            wifiNetworksContainer.addView(createWifiNetworkRow(network))
+        }
+    }
+
+    private fun createWifiNetworkRow(network: WifiNetworkInfo): View =
+        TextView(this).apply {
+            text = buildString {
+                append(if (network.connected) "* " else "")
+                append(network.ssid)
+                append("  ")
+                append(if (network.secured) "lock" else "open")
+                append("  ")
+                append("${network.signalLevel}/3")
+            }
+            textSize = 12f
+            setTextColor(if (network.connected) ACTIVE_CONTROL_COLOR else Color.WHITE)
+            includeFontPadding = false
+            setPadding(dp(6), dp(5), dp(6), dp(5))
+            setOnClickListener {
+                selectedWifiNetwork = network
+                wifiPasswordInput.visibility = if (network.secured) View.VISIBLE else View.GONE
+                wifiMessageText.text = network.ssid
+            }
+        }
+
+    private fun toggleWifiPower() {
+        enforceKioskAfterWifiAction()
+        val result = wifiController.setWifiEnabled(!wifiController.isWifiEnabled())
+        showWifiResult(result)
+        refreshWifiPanel()
+        enforceKioskAfterWifiAction()
+    }
+
+    private fun connectSelectedWifiNetwork() {
+        enforceKioskAfterWifiAction()
+        val network = selectedWifiNetwork ?: run {
+            wifiMessageText.text = "Select Wi-Fi network"
+            return
+        }
+        val result = wifiController.connect(network, wifiPasswordInput.text.toString())
+        showWifiResult(result)
+        refreshWifiPanel()
+        enforceKioskAfterWifiAction()
+    }
+
+    private fun showWifiResult(result: WifiConnectionResult) {
+        wifiMessageText.text = when (result) {
+            WifiConnectionResult.Success -> "Wi-Fi action started"
+            is WifiConnectionResult.Failure -> result.message
+        }
+    }
+
+    private fun enforceKioskAfterWifiAction() {
+        enterFullscreen()
+        configureDeviceOwnerPolicies()
+        startKioskMode()
     }
 
     private fun scheduleWifiPanelHide() {
