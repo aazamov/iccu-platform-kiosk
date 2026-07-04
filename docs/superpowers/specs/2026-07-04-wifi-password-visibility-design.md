@@ -7,15 +7,18 @@ Allow an admin/user in the in-app Wi-Fi panel to temporarily view the typed Wi-F
 ## User Experience
 
 - Password input is masked by default.
-- A small `Show` control appears beside the password field for secured Wi-Fi networks.
-- Pressing `Show` reveals the typed password and changes the control to `Hide`.
+- The password row should read as one compact input, not as separate blocks.
+- A small attached `View` control appears beside the password field for secured Wi-Fi networks.
+- Pressing `View` reveals the typed password and changes the control to `Hide`.
 - Pressing `Hide` masks the password again.
+- The row height should stay close to the custom keyboard key height.
+- The visibility control should be narrow, quiet, and not visually compete with `Connect`.
 - Selecting another network, closing the panel, connecting, clearing the password, or resetting the password state returns visibility to hidden.
 
 ## Components
 
 - `WifiPasswordInputState` owns the password buffer and visibility state.
-- `MainActivity` renders the password display text and the `Show`/`Hide` control.
+- `MainActivity` renders the password display text and the compact `View`/`Hide` control.
 - The custom keyboard remains the only password input method; no Android soft keyboard is opened.
 
 ## Data Flow
