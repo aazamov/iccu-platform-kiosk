@@ -19,6 +19,42 @@ class WifiPasswordInputStateTest {
     }
 
     @Test
+    fun passwordIsHiddenByDefaultAndCanBeShown() {
+        val state = WifiPasswordInputState()
+
+        state.appendKey("n")
+        state.appendKey("e")
+        state.appendKey("o")
+
+        assertFalse(state.passwordVisible)
+        assertEquals("•••", state.displayPassword())
+
+        state.toggleVisibility()
+
+        assertTrue(state.passwordVisible)
+        assertEquals("neo", state.displayPassword())
+    }
+
+    @Test
+    fun resetAndClearHidePasswordAgain() {
+        val state = WifiPasswordInputState()
+
+        state.appendKey("x")
+        state.toggleVisibility()
+        state.clear()
+
+        assertFalse(state.passwordVisible)
+        assertEquals("", state.displayPassword())
+
+        state.appendKey("y")
+        state.toggleVisibility()
+        state.reset()
+
+        assertFalse(state.passwordVisible)
+        assertEquals("", state.displayPassword())
+    }
+
+    @Test
     fun shiftUppercasesLetters() {
         val state = WifiPasswordInputState()
 

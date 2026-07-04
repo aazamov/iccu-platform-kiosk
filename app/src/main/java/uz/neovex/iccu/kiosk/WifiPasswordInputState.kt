@@ -11,6 +11,8 @@ class WifiPasswordInputState {
         private set
     var shifted: Boolean = false
         private set
+    var passwordVisible: Boolean = false
+        private set
 
     val password: String
         get() = buffer.toString()
@@ -32,12 +34,18 @@ class WifiPasswordInputState {
 
     fun clear() {
         buffer.clear()
+        passwordVisible = false
     }
 
     fun reset() {
         buffer.clear()
         mode = WifiKeyboardMode.LETTERS
         shifted = false
+        passwordVisible = false
+    }
+
+    fun toggleVisibility() {
+        passwordVisible = !passwordVisible
     }
 
     fun toggleShift() {
@@ -50,4 +58,6 @@ class WifiPasswordInputState {
     }
 
     fun maskedPassword(): String = "•".repeat(buffer.length)
+
+    fun displayPassword(): String = if (passwordVisible) password else maskedPassword()
 }
