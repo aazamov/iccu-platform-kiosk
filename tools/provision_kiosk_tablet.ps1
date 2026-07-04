@@ -20,7 +20,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ScriptVersion = "2026-07-04.3-win"
+$ScriptVersion = "2026-07-04.4-win"
 $AppPackage = "uz.neovex.iccu.kiosk"
 $MainActivity = "uz.neovex.iccu.kiosk/.MainActivity"
 $AdminReceiver = "uz.neovex.iccu.kiosk/.KioskDeviceAdminReceiver"
@@ -965,8 +965,19 @@ function Ensure-WebViewUpdated {
     Write-Ok "Android System WebView updated: $updatedVersion"
 }
 
+function Test-KioskPackageInstalled {
+    $result = Capture-AdbDevice -Arguments @("shell", "pm", "path", $AppPackage)
+    return ($result.Code -eq 0 -and $result.Text -match "package:")
+}
+
 function Remove-ExistingKioskPackageForFreshInstall {
-    Write-Warn "Installed kiosk package has a different signature. Removing old package before fresh install."
+    param([switch]$Required)
+
+    if (-not (Test-KioskPackageInstalled)) {
+        return $true
+    }
+
+    Write-Warn "Removing previously installed kiosk package before fresh install."
 
     $result = Capture-AdbDevice -Arguments @("shell", "dpm", "remove-active-admin", $AdminReceiver)
     if ($result.Text -ne "") {
@@ -980,13 +991,24 @@ function Remove-ExistingKioskPackageForFreshInstall {
     Write-Host $result.Text
     if ($result.Code -eq 0) {
         Write-Ok "Old kiosk package removed"
-        return
+        return $true
+    }
+
+    if ($result.Text -match "DELETE_FAILED_DEVICE_POLICY_MANAGER") {
+        if ($Required) {
+            Fail "Could not uninstall old kiosk package because it is Device Owner. Factory reset this tablet, do not add accounts, enable USB debugging, then run provisioning again."
+        }
+
+        Write-Warn "Old kiosk package is Device Owner, so Android blocked uninstall. Will try normal APK update with the existing package."
+        return $false
     }
 
     Fail "Could not uninstall old kiosk package. If it is Device Owner and cannot be removed, factory reset this tablet and run provisioning again."
 }
 
 function Install-Apk {
+    Remove-ExistingKioskPackageForFreshInstall | Out-Null
+
     Write-Step "Installing APK"
     $result = Capture-AdbDevice -Arguments @("install", "-r", $ApkPath)
     Write-Host $result.Text
@@ -997,7 +1019,7 @@ function Install-Apk {
     }
 
     if ($result.Text -match "INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match") {
-        Remove-ExistingKioskPackageForFreshInstall
+        Remove-ExistingKioskPackageForFreshInstall -Required | Out-Null
 
         Write-Step "Installing APK after removing old package"
         $result = Capture-AdbDevice -Arguments @("install", "-r", $ApkPath)
