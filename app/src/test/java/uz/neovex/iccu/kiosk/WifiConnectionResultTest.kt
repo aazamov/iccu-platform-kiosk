@@ -15,4 +15,10 @@ class WifiConnectionResultTest {
         val result = WifiOperationMessages.failed("connect")
         assertEquals("Could not connect Wi-Fi", result.message)
     }
+
+    @Test
+    fun mapsUnsupportedNetworkToSafeMessage() {
+        val result = WifiOperationMessages.unsupportedSecurity()
+        assertEquals("Wi-Fi security is not supported on this kiosk", result.message)
+    }
 }

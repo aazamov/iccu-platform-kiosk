@@ -11,4 +11,7 @@ object WifiOperationMessages {
 
     fun failed(action: String): WifiConnectionResult.Failure =
         WifiConnectionResult.Failure("Could not $action Wi-Fi")
+
+    fun unsupportedSecurity(): WifiConnectionResult.Failure =
+        WifiConnectionResult.Failure("Wi-Fi security is not supported on this kiosk")
 }

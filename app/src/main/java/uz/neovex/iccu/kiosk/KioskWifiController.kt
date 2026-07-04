@@ -31,18 +31,22 @@ class KioskWifiController(context: Context) {
     @SuppressLint("MissingPermission")
     fun scanNetworks(): List<WifiNetworkInfo> {
         runCatching { wifiManager.startScan() }
+            .getOrElse { return emptyList() }
         val connectedSsid = currentSsid()
-        return wifiManager.scanResults
+        return runCatching { wifiManager.scanResults }
+            .getOrElse { return emptyList() }
             .filter { it.SSID.isNotBlank() }
             .groupBy { it.SSID }
             .map { (_, results) -> results.maxBy { it.level } }
             .sortedByDescending { it.level }
             .map { result ->
+                val security = WifiSecurityParser.parse(result.capabilities)
                 WifiNetworkInfo(
                     ssid = result.SSID,
                     signalLevel = WifiManager.calculateSignalLevel(result.level, 4),
-                    secured = WifiSecurityParser.isSecured(result.capabilities),
+                    secured = security != WifiSecurity.OPEN,
                     connected = result.SSID == connectedSsid,
+                    security = security,
                 )
             }
     }
@@ -61,21 +65,31 @@ class KioskWifiController(context: Context) {
 
     @Suppress("DEPRECATION")
     fun connect(network: WifiNetworkInfo, password: String): WifiConnectionResult {
+        if (network.security == WifiSecurity.UNSUPPORTED) {
+            return WifiOperationMessages.unsupportedSecurity()
+        }
+
         return try {
             val configuration = WifiConfiguration().apply {
                 SSID = quoteWifiValue(network.ssid)
                 status = WifiConfiguration.Status.ENABLED
-                if (network.secured) {
-                    preSharedKey = quoteWifiValue(password)
-                    allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK)
-                    allowedProtocols.set(WifiConfiguration.Protocol.RSN)
-                    allowedProtocols.set(WifiConfiguration.Protocol.WPA)
-                    allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.CCMP)
-                    allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.TKIP)
-                    allowedGroupCiphers.set(WifiConfiguration.GroupCipher.CCMP)
-                    allowedGroupCiphers.set(WifiConfiguration.GroupCipher.TKIP)
-                } else {
-                    allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE)
+                when (network.security) {
+                    WifiSecurity.OPEN -> {
+                        allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE)
+                    }
+
+                    WifiSecurity.WPA_PSK -> {
+                        preSharedKey = quoteWifiValue(password)
+                        allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK)
+                        allowedProtocols.set(WifiConfiguration.Protocol.RSN)
+                        allowedProtocols.set(WifiConfiguration.Protocol.WPA)
+                        allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.CCMP)
+                        allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.TKIP)
+                        allowedGroupCiphers.set(WifiConfiguration.GroupCipher.CCMP)
+                        allowedGroupCiphers.set(WifiConfiguration.GroupCipher.TKIP)
+                    }
+
+                    WifiSecurity.UNSUPPORTED -> return WifiOperationMessages.unsupportedSecurity()
                 }
             }
 

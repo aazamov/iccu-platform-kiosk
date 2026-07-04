@@ -18,6 +18,7 @@ import android.os.BatteryManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.InputType
 import android.view.ActionMode
 import android.view.ContextMenu
 import android.view.Gravity
@@ -82,6 +83,7 @@ class MainActivity : Activity() {
     }
     private val networkReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            clearWifiSelection()
             updateWifiStatus()
         }
     }
@@ -429,7 +431,7 @@ class MainActivity : Activity() {
             setTextColor(ACTIVE_CONTROL_COLOR)
             includeFontPadding = false
             setPadding(dp(6), dp(5), dp(6), dp(5))
-            setOnClickListener { refreshWifiNetworks() }
+            setOnClickListener { refreshWifiPanel() }
         }
 
         val wifiPanelCloseButton = TextView(this).apply {
@@ -441,6 +443,7 @@ class MainActivity : Activity() {
             contentDescription = "Close Wi-Fi status"
             setPadding(dp(6), dp(5), dp(6), dp(5))
             setOnClickListener {
+                clearWifiSelection()
                 wifiPanel.visibility = View.GONE
                 wifiPanelHandler.removeCallbacksAndMessages(null)
                 wifiPanelGate.reset()
@@ -473,7 +476,14 @@ class MainActivity : Activity() {
         wifiPasswordInput = EditText(this).apply {
             hint = "Password"
             textSize = 12f
+            inputType = InputType.TYPE_CLASS_TEXT or
+                InputType.TYPE_TEXT_VARIATION_PASSWORD or
+                InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             setSingleLine(true)
+            setTextColor(Color.WHITE)
+            setHintTextColor(INACTIVE_CONTROL_COLOR)
+            setPadding(dp(6), dp(3), dp(6), dp(3))
+            setBackgroundColor(Color.argb(130, 2, 18, 12))
             visibility = View.GONE
         }
 
@@ -765,6 +775,7 @@ class MainActivity : Activity() {
         refreshWifiPanel()
 
         if (wifiPanel.visibility == View.VISIBLE) {
+            clearWifiSelection()
             wifiPanel.visibility = View.GONE
             wifiPanelHandler.removeCallbacksAndMessages(null)
             wifiPanelGate.reset()
@@ -812,9 +823,18 @@ class MainActivity : Activity() {
             includeFontPadding = false
             setPadding(dp(6), dp(5), dp(6), dp(5))
             setOnClickListener {
+                wifiPasswordInput.text.clear()
                 selectedWifiNetwork = network
-                wifiPasswordInput.visibility = if (network.secured) View.VISIBLE else View.GONE
-                wifiMessageText.text = network.ssid
+                wifiPasswordInput.visibility = if (network.security == WifiSecurity.WPA_PSK) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
+                }
+                wifiMessageText.text = if (network.security == WifiSecurity.UNSUPPORTED) {
+                    WifiOperationMessages.unsupportedSecurity().message
+                } else {
+                    network.ssid
+                }
             }
         }
 
@@ -832,8 +852,12 @@ class MainActivity : Activity() {
             wifiMessageText.text = "Select Wi-Fi network"
             return
         }
-        val result = wifiController.connect(network, wifiPasswordInput.text.toString())
+        val password = wifiPasswordInput.text.toString()
+        wifiPasswordInput.text.clear()
+        val result = wifiController.connect(network, password)
         showWifiResult(result)
+        selectedWifiNetwork = null
+        wifiPasswordInput.visibility = View.GONE
         refreshWifiPanel()
         enforceKioskAfterWifiAction()
     }
@@ -851,10 +875,19 @@ class MainActivity : Activity() {
         startKioskMode()
     }
 
+    private fun clearWifiSelection() {
+        selectedWifiNetwork = null
+        if (::wifiPasswordInput.isInitialized) {
+            wifiPasswordInput.text.clear()
+            wifiPasswordInput.visibility = View.GONE
+        }
+    }
+
     private fun scheduleWifiPanelHide() {
         wifiPanelHandler.removeCallbacksAndMessages(null)
         wifiPanelHandler.postDelayed({
             if (::wifiPanel.isInitialized) {
+                clearWifiSelection()
                 wifiPanel.visibility = View.GONE
             }
             enterFullscreen()
