@@ -45,6 +45,8 @@ import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
@@ -147,7 +149,7 @@ class MainActivity : Activity() {
             databaseEnabled = true
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
-            mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             loadsImagesAutomatically = true
             javaScriptCanOpenWindowsAutomatically = true
             allowContentAccess = true
@@ -188,6 +190,17 @@ class MainActivity : Activity() {
                 verifyPageHasContentOrReload()
             }
 
+            override fun shouldInterceptRequest(
+                view: WebView,
+                request: WebResourceRequest,
+            ): WebResourceResponse? {
+                val originalUrl = request.url.toString()
+                val upgradedUrl = BackendMediaUrlPolicy.upgradeToHttpsIfBackendMedia(originalUrl)
+                if (upgradedUrl == originalUrl) return null
+
+                return runCatching { openHttpsResource(upgradedUrl) }.getOrNull()
+            }
+
             override fun onReceivedHttpError(
                 view: WebView,
                 request: WebResourceRequest,
@@ -206,6 +219,19 @@ class MainActivity : Activity() {
                 if (request.isForMainFrame) showOfflineMessage("Connection unavailable")
             }
         }
+    }
+
+    private fun openHttpsResource(url: String): WebResourceResponse {
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = RESOURCE_CONNECT_TIMEOUT_MS
+            readTimeout = RESOURCE_READ_TIMEOUT_MS
+            instanceFollowRedirects = true
+            setRequestProperty("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
+        }
+        val contentType = connection.contentType ?: "application/octet-stream"
+        val mimeType = contentType.substringBefore(";").trim().ifBlank { "application/octet-stream" }
+        val charset = contentType.substringAfter("charset=", "").substringBefore(";").ifBlank { null }
+        return WebResourceResponse(mimeType, charset, connection.inputStream)
     }
 
     private fun createLayout(): View {
@@ -802,6 +828,8 @@ class MainActivity : Activity() {
         private const val CONTROL_PRESS_DURATION_MS = 3_000L
         private const val BRIGHTNESS_PANEL_HIDE_DELAY_MS = 6_000L
         private const val RELOCK_AFTER_EXTERNAL_PANEL_DELAY_MS = 1_000L
+        private const val RESOURCE_CONNECT_TIMEOUT_MS = 8_000
+        private const val RESOURCE_READ_TIMEOUT_MS = 12_000
         private const val MIN_BRIGHTNESS_PROGRESS = 5
         private const val BRIGHTNESS_STEP = 10
         private val ACTIVE_CONTROL_COLOR = Color.rgb(218, 185, 73)
